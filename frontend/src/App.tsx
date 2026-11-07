@@ -1,23 +1,57 @@
-import { useEffect, useState } from "react";
+const features = [
+  "Бронирование слотов с 09:00 до 18:00.",
+  "Проверка конфликта при бронировании.",
+  "Предпросмотр предстоящих событий в отдельном разделе.",
+];
 
-import { client } from "./api/client.gen";
-import { apiHealth } from "./api/sdk.gen";
-
-client.setConfig({ baseUrl: "" });
+function CalendarIcon() {
+  return (
+    <svg aria-hidden="true" className="calendar-icon" fill="none" viewBox="0 0 24 24">
+      <rect height="17" rx="3" width="18" x="3" y="4" />
+      <path d="M8 2v4M16 2v4M3 9h18" />
+    </svg>
+  );
+}
 
 export default function App() {
-  const [status, setStatus] = useState("loading…");
-
-  useEffect(() => {
-    apiHealth()
-      .then(({ data }) => setStatus(data?.status ?? "unknown"))
-      .catch(() => setStatus("unavailable"));
-  }, []);
-
   return (
-    <main>
-      <h1>Календарь звонков</h1>
-      <p>Статус API: {status}</p>
-    </main>
+    <>
+      <header className="site-header">
+        <div className="container header-content">
+          <a aria-label="Calendar — на главную" className="brand" href="/">
+            <CalendarIcon />
+            <span>Calendar</span>
+          </a>
+          <nav aria-label="Основная навигация">
+            <a className="nav-link" href="/book">
+              Записаться
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      <main className="container hero">
+        <section className="hero-content">
+          <p className="eyebrow">Быстрая запись на звонок</p>
+          <h1>Calendar</h1>
+          <p className="hero-description">
+            Один экран, понятные слоты, быстрая бронь. Выберите время и запишитесь на звонок без
+            лишних шагов.
+          </p>
+          <a className="booking-button" href="/book">
+            Записаться <span aria-hidden="true">→</span>
+          </a>
+        </section>
+
+        <section aria-labelledby="features-title" className="features-card">
+          <h2 id="features-title">Что доступно прямо сейчас</h2>
+          <ul>
+            {features.map((feature) => (
+              <li key={feature}>{feature}</li>
+            ))}
+          </ul>
+        </section>
+      </main>
+    </>
   );
 }

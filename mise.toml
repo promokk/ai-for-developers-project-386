@@ -39,6 +39,12 @@ run = "uv sync"
 description = "Установить зависимости JS (pnpm workspace: корень, contracts, frontend)"
 run = "pnpm install"
 
+[tasks."install:playwright"]
+description = "Установить Chromium для браузерных тестов фронтенда"
+dir = "frontend"
+depends = ["install:js"]
+run = "pnpm exec playwright install chromium"
+
 # --- Генерация (генерируемые файлы не редактируются вручную) ---
 
 [tasks."gen:openapi"]
@@ -114,6 +120,12 @@ description = "pytest: тесты бэкенда"
 dir = "backend"
 run = "uv run pytest"
 
+[tasks."test:frontend"]
+description = "Playwright: браузерные тесты фронтенда"
+dir = "frontend"
+depends = ["install:playwright"]
+run = "pnpm test:e2e"
+
 [tasks.check]
 description = "Все проверки проекта (локально и в CI)"
 run = [
@@ -130,6 +142,8 @@ run = [
   { task = "lint:typos" },
   { task = "check:generated" },
   { task = "test" },
+  { task = "test:frontend" },
+  { task = "build" },
 ]
 
 [tasks.fix]
@@ -154,11 +168,11 @@ description = "Dev-сервер фронтенда (vite, foreground)"
 run = "pnpm --dir frontend dev --host 127.0.0.1 --port {{ env.FRONTEND_PORT }}"
 
 [tasks.setup]
-description = "Полная установка: зависимости, генерация, git-хуки"
+description = "Полная установка: зависимости, браузер, генерация, git-хуки"
 env = { HK_MISE = "1" }
 run = [
   { task = "install:backend" },
-  { task = "install:js" },
+  { task = "install:playwright" },
   { task = "gen" },
   "hk install",
 ]

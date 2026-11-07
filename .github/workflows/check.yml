@@ -22,6 +22,12 @@ jobs:
 
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
 
+      - name: Install JS dependencies
+        run: mise run install:js
+
+      - name: Install Playwright Chromium
+        run: mise exec -- pnpm --dir frontend exec playwright install --with-deps chromium
+
       - name: Run all checks
         run: mise run check
 

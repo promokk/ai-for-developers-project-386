@@ -15,7 +15,7 @@
 - Контракт API: TypeSpec → OpenAPI → клиентский SDK (@hey-api/openapi-ts).
 - Окружение: mise (версии, задачи, хуки, daemons), hk (git-хуки).
 - Проверки: Ruff, ty, deptry, Oxlint, oxfmt, vacuum, oasdiff, jactionlint,
-  Betterleaks, rumdl, typos, commitlint
+  Betterleaks, OSV-Scanner, rumdl, typos, commitlint
   ([подборка](https://github.com/mokevnin/dev-quality-gates)).
 
 ## Установка
