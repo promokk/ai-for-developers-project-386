@@ -51,7 +51,7 @@
 - API: vacuum (линт OpenAPI), oasdiff (breaking changes против base-ветки).
 - Прочее: jactionlint (workflow), Betterleaks (секреты), OSV-Scanner
   (уязвимости, по расписанию), rumdl (Markdown), typos (опечатки),
-  commitlint (Conventional Commits), Renovate (обновления зависимостей).
+  commitlint (Conventional Commits).
 - Git-хуки — hk (`hk.pkl`): pre-commit (быстрые проверки staged-файлов),
   pre-push (`mise run check`), commit-msg (commitlint).
 

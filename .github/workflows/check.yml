@@ -47,8 +47,3 @@ jobs:
           else
             echo "Base spec not found, skipping"
           fi
-
-      - name: Validate Renovate config
-        env:
-          RENOVATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm dlx renovate@44.222.0 renovate-config-validator .github/renovate.json
