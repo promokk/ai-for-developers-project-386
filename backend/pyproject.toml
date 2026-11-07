@@ -1,0 +1,42 @@
+[project]
+name = "calendar-api"
+version = "0.1.0"
+description = "Call Calendar API - бэкенд"
+requires-python = ">=3.13"
+dependencies = [
+  "fastapi",
+  "pydantic",
+  "uvicorn",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/calendar_api"]
+
+[dependency-groups]
+dev = [
+  "deptry",
+  "httpx2",
+  "pytest",
+  "pyyaml",
+]
+
+[tool.ruff]
+src = ["src"]
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["B", "C901", "E", "F", "I", "RUF", "S", "SIM", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.deptry.per_rule_ignores]
+# uvicorn — сервер запуска (mise dev:backend / daemons), в коде не импортируется
+DEP002 = ["uvicorn"]
