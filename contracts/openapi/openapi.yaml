@@ -1,0 +1,115 @@
+openapi: 3.0.0
+info:
+  title: Call Calendar API
+  description: 'API сервиса «Календарь звонков»: бронирование слотов для звонков.'
+  version: 0.0.0
+tags:
+  - name: service
+  - name: bookings
+paths:
+  /api/bookings:
+    get:
+      operationId: Api_listBookings
+      description: Список всех бронирований.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+      tags:
+        - bookings
+    post:
+      operationId: Api_createBooking
+      description: Создать бронирование.
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+      tags:
+        - bookings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+  /api/health:
+    get:
+      operationId: Api_health
+      description: Проверка доступности сервиса.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+      tags:
+        - service
+components:
+  schemas:
+    Booking:
+      type: object
+      required:
+        - id
+        - name
+        - startsAt
+        - endsAt
+      properties:
+        id:
+          type: string
+          description: Идентификатор бронирования.
+        name:
+          type: string
+          description: Название звонка.
+        startsAt:
+          type: string
+          format: date-time
+          description: Начало слота.
+        endsAt:
+          type: string
+          format: date-time
+          description: Конец слота.
+      description: Бронирование слота в календаре.
+    BookingCreate:
+      type: object
+      required:
+        - name
+        - startsAt
+        - endsAt
+      properties:
+        name:
+          type: string
+          description: Название звонка.
+        startsAt:
+          type: string
+          format: date-time
+          description: Начало слота.
+        endsAt:
+          type: string
+          format: date-time
+          description: Конец слота.
+      description: Данные для создания бронирования.
+    Health:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Текущий статус (`ok` — сервис работает).
+      description: Состояние сервиса.
+servers:
+  - url: http://127.0.0.1:8000
+    description: Локальная разработка
+    variables: {}
