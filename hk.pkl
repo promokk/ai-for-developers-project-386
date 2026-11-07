@@ -1,0 +1,47 @@
+amends "package://github.com/jdx/hk/releases/download/v2.11.1/hk@2.11.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.11.1/hk@2.11.1#/Builtins.pkl"
+
+min_hk_version = "2.11.1"
+
+hooks {
+  ["pre-commit"] {
+    fix = true
+    // stash отключён: на Windows stash untracked-файлов периодически не восстанавливается (файлы теряются из рабочего дерева, восстановление из .git/hk/patches)
+    stash = "none"
+    steps {
+      ["ruff"] = Builtins.ruff
+      ["ruff-format"] = Builtins.ruff_format
+      ["oxlint"] = (Builtins.ox_lint) {
+        dir = "frontend"
+        exclude = List("**/src/api/**", "**/dist/**")
+      }
+      ["oxfmt"] = (Builtins.oxfmt) {
+        dir = "frontend"
+        exclude = List("**/src/api/**", "**/dist/**")
+      }
+      ["rumdl"] = Builtins.rumdl
+      ["typos"] = Builtins.typos
+      ["jactionlint"] = Builtins.jactionlint
+      ["vacuum"] = Builtins.vacuum
+      ["betterleaks"] = Builtins.betterleaks
+      ["trailing-whitespace"] = Builtins.trailing_whitespace
+      ["newlines"] = Builtins.newlines
+      ["check-added-large-files"] = Builtins.check_added_large_files
+      ["check-merge-conflict"] = Builtins.check_merge_conflict
+    }
+  }
+  ["pre-push"] {
+    steps {
+      ["check"] {
+        check = "mise run check"
+      }
+    }
+  }
+  ["commit-msg"] {
+    steps {
+      ["commitlint"] {
+        check = "pnpm exec commitlint --edit {{ commit_msg_file }}"
+      }
+    }
+  }
+}

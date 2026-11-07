@@ -1,0 +1,12 @@
+[files]
+extend-exclude = [
+  ".agents",
+  "contracts/openapi",
+  "frontend/src/api",
+  "pnpm-lock.yaml",
+  "uv.lock",
+  "skills-lock.json",
+]
+
+[default.extend-words]
+tsp = "tsp"
