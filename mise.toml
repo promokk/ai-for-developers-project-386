@@ -1,0 +1,185 @@
+[settings]
+experimental = true
+
+[tools]
+python = "3.13.18"
+uv = "0.13.7"
+node = "26.13.0"
+pnpm = "12.18.0"
+ruff = "0.17.4"
+"ubi:astral-sh/ty" = "0.0.99"
+hk = "2.11.1"
+pitchfork = "2.33.1"
+"ubi:jdx/jactionlint" = "2.5.0"
+"npm:oxlint" = "1.91.0"
+"npm:oxfmt" = "0.76.0"
+shellcheck = "0.11.0"
+"ubi:betterleaks/betterleaks" = "1.10.0"
+"ubi:google/osv-scanner" = "2.7.0"
+"ubi:rvben/rumdl" = "0.3.2"
+"ubi:crate-ci/typos" = "1.52.0"
+"ubi:daveshanley/vacuum" = "0.39.0"
+"ubi:oasdiff/oasdiff" = "1.35.0"
+
+[env]
+BACKEND_PORT = "8000"
+FRONTEND_PORT = "5173"
+
+[hooks]
+postinstall = "mise run setup"
+enter = "echo [mise] Project environment active. Commands: mise run setup / check / fix, mise daemons start"
+
+# --- Установка зависимостей ---
+
+[tasks."install:backend"]
+description = "Установить зависимости бэкенда (uv)"
+dir = "backend"
+run = "uv sync"
+
+[tasks."install:js"]
+description = "Установить зависимости JS (pnpm workspace: корень, contracts, frontend)"
+run = "pnpm install"
+
+# --- Генерация (генерируемые файлы не редактируются вручную) ---
+
+[tasks."gen:openapi"]
+description = "TypeSpec -> OpenAPI (contracts/openapi/openapi.yaml)"
+dir = "contracts"
+depends = ["install:js"]
+run = "pnpm exec tsp compile ."
+
+[tasks."gen:sdk"]
+description = "OpenAPI -> клиентский TS SDK (frontend/src/api)"
+dir = "frontend"
+depends = ["gen:openapi"]
+run = "pnpm exec openapi-ts"
+
+[tasks.gen]
+description = "Перегенерировать OpenAPI и SDK"
+depends = ["gen:sdk"]
+run = "true"
+
+# --- Проверки ---
+
+[tasks."lint:python"]
+description = "Ruff: линт и формат бэкенда"
+run = ["ruff check backend", "ruff format --check backend"]
+
+[tasks."typecheck:python"]
+description = "ty: проверка типов бэкенда"
+dir = "backend"
+run = "ty check src"
+
+[tasks."check:deps"]
+description = "deptry: неиспользуемые/отсутствующие зависимости бэкенда"
+dir = "backend"
+run = "uv run deptry src"
+
+[tasks."lint:js"]
+description = "Oxlint + oxfmt: линт и формат фронтенда"
+dir = "frontend"
+run = ["oxlint --deny-warnings", "oxfmt --check"]
+
+[tasks."typecheck:js"]
+description = "tsc --noEmit: проверка типов фронтенда"
+dir = "frontend"
+run = "pnpm exec tsc --noEmit"
+
+[tasks."lint:openapi"]
+description = "vacuum: линтер OpenAPI-спеки"
+run = "vacuum lint contracts/openapi/openapi.yaml"
+
+[tasks."lint:ci"]
+description = "jactionlint: линтер workflow GitHub Actions"
+run = "jactionlint"
+
+[tasks."lint:secrets"]
+description = "Betterleaks: поиск секретов"
+run = "betterleaks dir . --redact -c .betterleaks.toml"
+
+[tasks."lint:md"]
+description = "rumdl: линтер Markdown"
+run = "rumdl check ."
+
+[tasks."lint:typos"]
+description = "typos: проверка опечаток"
+run = "typos"
+
+[tasks."check:generated"]
+description = "Генерируемые файлы свежие (OpenAPI, SDK)"
+depends = ["gen"]
+run = "git diff --exit-code contracts/openapi frontend/src/api"
+
+[tasks.test]
+description = "pytest: тесты бэкенда"
+dir = "backend"
+run = "uv run pytest"
+
+[tasks.check]
+description = "Все проверки проекта (локально и в CI)"
+run = [
+  { task = "setup" },
+  { task = "lint:python" },
+  { task = "typecheck:python" },
+  { task = "check:deps" },
+  { task = "lint:js" },
+  { task = "typecheck:js" },
+  { task = "lint:openapi" },
+  { task = "lint:ci" },
+  { task = "lint:secrets" },
+  { task = "lint:md" },
+  { task = "lint:typos" },
+  { task = "check:generated" },
+  { task = "test" },
+]
+
+[tasks.fix]
+description = "Безопасные автофиксы"
+depends = ["install:backend", "install:js"]
+run = [
+  "ruff check --fix backend",
+  "ruff format backend",
+  "cd frontend && oxlint --fix && oxfmt",
+  "rumdl fmt .",
+  "typos --write-changes",
+]
+
+# --- Запуск для разработки ---
+
+[tasks."dev:backend"]
+description = "Dev-сервер бэкенда (uvicorn, foreground)"
+run = "uv run --directory backend uvicorn calendar_api.main:app --reload --host 127.0.0.1 --port {{ env.BACKEND_PORT }}"
+
+[tasks."dev:frontend"]
+description = "Dev-сервер фронтенда (vite, foreground)"
+run = "pnpm --dir frontend dev --host 127.0.0.1 --port {{ env.FRONTEND_PORT }}"
+
+[tasks.setup]
+description = "Полная установка: зависимости, генерация, git-хуки"
+env = { HK_MISE = "1" }
+run = [
+  { task = "install:backend" },
+  { task = "install:js" },
+  { task = "gen" },
+  "hk install",
+]
+
+[tasks.build]
+description = "Сборка фронтенда"
+dir = "frontend"
+depends = ["gen:sdk"]
+run = "pnpm exec vite build"
+
+# --- Фоновые серверы разработки (pitchfork) ---
+
+[daemons.backend]
+run = "uv run --directory backend uvicorn calendar_api.main:app --host 127.0.0.1 --port {{ env.BACKEND_PORT }}"
+ready_port = 8000
+
+[daemons.frontend]
+run = "pnpm --dir frontend dev --host 127.0.0.1 --port {{ env.FRONTEND_PORT }}"
+ready_port = 5173
+depends = ["backend"]
+
+[daemon_groups]
+default = ["backend", "frontend"]
