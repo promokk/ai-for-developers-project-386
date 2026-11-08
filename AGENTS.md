@@ -18,9 +18,10 @@
   генерируются `contracts/openapi/openapi.yaml` и клиентский TS SDK
   (`@hey-api/openapi-ts`) в `frontend/src/api/`.
 
-Эндпоинты (префикс `/api`): `GET /api/health`, `GET /api/bookings`,
-`POST /api/bookings` (201). Модель `Booking`: `id`, `name`, `startsAt`,
-`endsAt` (camelCase в JSON; в Python — snake_case через
+Эндпоинты (префикс `/api`): `GET /api/health`, `GET /api/event-types`,
+`GET /api/bookings`, `POST /api/bookings` (201). Модель `EventType`: `id`,
+`name`, `description`, `durationMinutes`. Модель `Booking`: `id`, `name`,
+`startsAt`, `endsAt` (camelCase в JSON; в Python — snake_case через
 `pydantic.alias_generators.to_camel`).
 
 ## Окружение

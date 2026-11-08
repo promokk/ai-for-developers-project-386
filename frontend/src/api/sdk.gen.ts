@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ApiCreateBookingData, ApiCreateBookingResponses, ApiHealthData, ApiHealthResponses, ApiListBookingsData, ApiListBookingsResponses } from './types.gen';
+import type { ApiCreateBookingData, ApiCreateBookingResponses, ApiHealthData, ApiHealthResponses, ApiListBookingsData, ApiListBookingsResponses, ApiListEventTypesData, ApiListEventTypesResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -34,6 +34,11 @@ export const apiCreateBooking = <ThrowOnError extends boolean = false>(options: 
         ...options.headers
     }
 });
+
+/**
+ * Список типов событий в порядке создания.
+ */
+export const apiListEventTypes = <ThrowOnError extends boolean = false>(options?: Options<ApiListEventTypesData, ThrowOnError>): RequestResult<ApiListEventTypesResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ApiListEventTypesResponses, unknown, ThrowOnError>({ url: '/api/event-types', ...options });
 
 /**
  * Проверка доступности сервиса.

@@ -1,3 +1,5 @@
+import EventTypesPage from "./EventTypesPage";
+
 const features = [
   "Бронирование слотов с 09:00 до 18:00.",
   "Проверка конфликта при бронировании.",
@@ -23,6 +25,9 @@ export default function App() {
             <span>Calendar</span>
           </a>
           <nav aria-label="Основная навигация">
+            <a className="nav-link" href="/event-types">
+              Типы событий
+            </a>
             <a className="nav-link" href="/book">
               Записаться
             </a>
@@ -30,28 +35,32 @@ export default function App() {
         </div>
       </header>
 
-      <main className="container hero">
-        <section className="hero-content">
-          <p className="eyebrow">Быстрая запись на звонок</p>
-          <h1>Calendar</h1>
-          <p className="hero-description">
-            Один экран, понятные слоты, быстрая бронь. Выберите время и запишитесь на звонок без
-            лишних шагов.
-          </p>
-          <a className="booking-button" href="/book">
-            Записаться <span aria-hidden="true">→</span>
-          </a>
-        </section>
+      {window.location.pathname === "/event-types" ? (
+        <EventTypesPage />
+      ) : (
+        <main className="container hero">
+          <section className="hero-content">
+            <p className="eyebrow">Быстрая запись на звонок</p>
+            <h1>Calendar</h1>
+            <p className="hero-description">
+              Один экран, понятные слоты, быстрая бронь. Выберите время и запишитесь на звонок без
+              лишних шагов.
+            </p>
+            <a className="booking-button" href="/book">
+              Записаться <span aria-hidden="true">→</span>
+            </a>
+          </section>
 
-        <section aria-labelledby="features-title" className="features-card">
-          <h2 id="features-title">Что доступно прямо сейчас</h2>
-          <ul>
-            {features.map((feature) => (
-              <li key={feature}>{feature}</li>
-            ))}
-          </ul>
-        </section>
-      </main>
+          <section aria-labelledby="features-title" className="features-card">
+            <h2 id="features-title">Что доступно прямо сейчас</h2>
+            <ul>
+              {features.map((feature) => (
+                <li key={feature}>{feature}</li>
+              ))}
+            </ul>
+          </section>
+        </main>
+      )}
     </>
   );
 }

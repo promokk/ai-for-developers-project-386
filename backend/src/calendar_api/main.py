@@ -12,6 +12,15 @@ class Health(BaseModel):
     status: str
 
 
+class EventType(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    id: str
+    name: str
+    description: str | None
+    duration_minutes: int
+
+
 class BookingBase(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
@@ -24,12 +33,45 @@ class Booking(BookingBase):
     id: str
 
 
+EVENT_TYPES: list[EventType] = [
+    EventType(
+        id=str(uuid4()),
+        name="Знакомство",
+        description=(
+            "Короткий звонок, чтобы познакомиться, обсудить задачу "
+            "и определить следующие шаги"
+        ),
+        duration_minutes=30,
+    ),
+    EventType(
+        id=str(uuid4()),
+        name="Консультация",
+        description=(
+            "Подробное обсуждение вашего вопроса, разбор возможных решений "
+            "и следующих шагов"
+        ),
+        duration_minutes=60,
+    ),
+    EventType(
+        id=str(uuid4()),
+        name="Глубокий разбор",
+        description=(
+            "Детальный разбор сложной задачи и составление конкретного плана действий"
+        ),
+        duration_minutes=90,
+    ),
+]
 BOOKINGS: list[Booking] = []
 
 
 @app.get("/api/health")
 def health() -> Health:
     return Health(status="ok")
+
+
+@app.get("/api/event-types")
+def list_event_types() -> list[EventType]:
+    return EVENT_TYPES
 
 
 @app.get("/api/bookings")

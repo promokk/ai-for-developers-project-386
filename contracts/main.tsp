@@ -13,6 +13,21 @@ model Health {
   status: string;
 }
 
+/** Тип события, доступный для бронирования. */
+model EventType {
+  /** Серверный идентификатор типа события. */
+  id: string;
+
+  /** Название типа события. */
+  name: string;
+
+  /** Необязательное описание типа события. */
+  description: string | null;
+
+  /** Длительность события в минутах. */
+  durationMinutes: integer;
+}
+
 /** Бронирование слота в календаре. */
 model Booking {
   /** Идентификатор бронирования. */
@@ -47,6 +62,12 @@ namespace Api {
   @route("/health")
   @tag("service")
   op health(): Health;
+
+  /** Список типов событий в порядке создания. */
+  @get
+  @route("/event-types")
+  @tag("event-types")
+  op listEventTypes(): EventType[];
 
   /** Список всех бронирований. */
   @get
