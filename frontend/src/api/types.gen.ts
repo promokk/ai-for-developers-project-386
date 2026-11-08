@@ -45,6 +45,28 @@ export type BookingCreate = {
 };
 
 /**
+ * Тип события, доступный для бронирования.
+ */
+export type EventType = {
+    /**
+     * Серверный идентификатор типа события.
+     */
+    id: string;
+    /**
+     * Название типа события.
+     */
+    name: string;
+    /**
+     * Необязательное описание типа события.
+     */
+    description: string | null;
+    /**
+     * Длительность события в минутах.
+     */
+    durationMinutes: number;
+};
+
+/**
  * Состояние сервиса.
  */
 export type Health = {
@@ -85,6 +107,22 @@ export type ApiCreateBookingResponses = {
 };
 
 export type ApiCreateBookingResponse = ApiCreateBookingResponses[keyof ApiCreateBookingResponses];
+
+export type ApiListEventTypesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/event-types';
+};
+
+export type ApiListEventTypesResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: Array<EventType>;
+};
+
+export type ApiListEventTypesResponse = ApiListEventTypesResponses[keyof ApiListEventTypesResponses];
 
 export type ApiHealthData = {
     body?: never;

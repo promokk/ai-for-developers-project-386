@@ -170,3 +170,37 @@ h1 {
   background: #fb923c;
   border-radius: 50%;
 }
+
+nav {
+  display: flex;
+  gap: 24px;
+}
+
+.event-types-page {
+  padding-block: 64px;
+}
+
+.event-types-page h1 {
+  margin-bottom: 40px;
+  font-size: 48px;
+}
+
+.event-types-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-types-list li {
+  padding: 28px;
+  background: rgb(255 255 255 / 92%);
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+}
+
+.event-types-list h2 {
+  margin-top: 0;
+}
