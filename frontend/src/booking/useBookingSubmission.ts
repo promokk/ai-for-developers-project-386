@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent, RefObject } from "react";
 
 import { apiCreateBooking } from "../api";
@@ -55,6 +55,7 @@ export function useBookingSubmission({
   const [contactErrors, setContactErrors] = useState<ContactErrors>({});
   const [submitError, setSubmitError] = useState("");
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
   const [keyReused, setKeyReused] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
@@ -64,7 +65,7 @@ export function useBookingSubmission({
     emailInput: RefObject<HTMLInputElement | null>,
   ) {
     event.preventDefault();
-    if (sending || keyReused || !eventType || !selectedInterval) {
+    if (sendingRef.current || sending || keyReused || !eventType || !selectedInterval) {
       return;
     }
     const errors = validateContact(guestName, guestEmail);
@@ -78,6 +79,7 @@ export function useBookingSubmission({
       return;
     }
 
+    sendingRef.current = true;
     setSending(true);
     setSubmitError("");
     const controller = new AbortController();
@@ -134,6 +136,7 @@ export function useBookingSubmission({
       );
     } finally {
       clearTimeout(timeout);
+      sendingRef.current = false;
       setSending(false);
     }
   }

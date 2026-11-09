@@ -41,11 +41,11 @@ async def create_event_type(request: Request) -> EventType | JSONResponse:
 
 
 @app.get("/api/event-types/{eventTypeId}/availability", response_model=Availability)
-def get_availability(
+async def get_availability(
     event_type_id: Annotated[str, Path(alias="eventTypeId")],
     date: str | None = None,
 ) -> Availability | JSONResponse:
-    return availability_for(event_type_id, date)
+    return await availability_for(event_type_id, date)
 
 
 @app.get("/api/bookings", response_model=list[Booking])

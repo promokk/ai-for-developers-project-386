@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 
 import { moscowDate } from "../src/moscowDate";
 import { expect, startBackend, test } from "./backend";
@@ -57,6 +57,26 @@ test.describe.serial("бронирование гостем", () => {
 
 function tomorrowMoscow() {
   return moscowDate(1);
+}
+
+async function bookSlot(
+  request: APIRequestContext,
+  eventTypeId: string,
+  date: string,
+  slot: number,
+) {
+  const hour = 9 + Math.floor(slot / 2);
+  const minute = slot % 2 ? "30" : "00";
+  const response = await request.post("/api/bookings", {
+    data: {
+      eventTypeId,
+      startsAt: `${date}T${String(hour).padStart(2, "0")}:${minute}+03:00`,
+      guestName: "Гость",
+      guestEmail: "guest@example.com",
+    },
+    headers: { "Idempotency-Key": crypto.randomUUID() },
+  });
+  expect(response.status(), await response.text()).toBe(201);
 }
 
 test.describe.serial("бронирование: выбор и конфликт", () => {
@@ -142,18 +162,7 @@ test.describe.serial("бронирование: пустые состояния"
     }>;
     const date = tomorrowMoscow();
     for (let slot = 0; slot < 18; slot += 1) {
-      const hour = 9 + Math.floor(slot / 2);
-      const minute = slot % 2 ? "30" : "00";
-      const response = await request.post("/api/bookings", {
-        data: {
-          eventTypeId: types[0].id,
-          startsAt: `${date}T${String(hour).padStart(2, "0")}:${minute}+03:00`,
-          guestName: "Гость",
-          guestEmail: "guest@example.com",
-        },
-        headers: { "Idempotency-Key": crypto.randomUUID() },
-      });
-      expect(response.status(), await response.text()).toBe(201);
+      await bookSlot(request, types[0].id, date, slot);
     }
 
     await page.goto("/book");
@@ -175,18 +184,7 @@ test.describe.serial("бронирование: пустые состояния"
     for (let day = 0; day < 14; day += 1) {
       for (let slot = 0; slot < 18; slot += 1) {
         const date = firstDay.toISOString().slice(0, 10);
-        const hour = 9 + Math.floor(slot / 2);
-        const minute = slot % 2 ? "30" : "00";
-        const response = await request.post("/api/bookings", {
-          data: {
-            eventTypeId: types[0].id,
-            startsAt: `${date}T${String(hour).padStart(2, "0")}:${minute}+03:00`,
-            guestName: "Гость",
-            guestEmail: "guest@example.com",
-          },
-          headers: { "Idempotency-Key": crypto.randomUUID() },
-        });
-        expect(response.status()).toBe(201);
+        await bookSlot(request, types[0].id, date, slot);
       }
       firstDay.setUTCDate(firstDay.getUTCDate() + 1);
     }
@@ -211,6 +209,39 @@ async function openConfirmation(page: Page) {
 }
 
 test.describe.serial("бронирование: повторная отправка", () => {
+  test("создаёт один активный POST при двух синхронных submit", async ({ page }) => {
+    await startBackend();
+    await openConfirmation(page);
+    let bookingRequests = 0;
+    let markPostSeen!: () => void;
+    const postSeen = new Promise<void>((resolve) => {
+      markPostSeen = resolve;
+    });
+    let releasePost!: () => void;
+    const postReleased = new Promise<void>((resolve) => {
+      releasePost = resolve;
+    });
+    await page.route("**/api/bookings", async (route) => {
+      bookingRequests += 1;
+      markPostSeen();
+      await postReleased;
+      await route.continue();
+    });
+
+    await page.locator("form.confirmation-form").evaluate((form) => {
+      const submit = () =>
+        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      window.addEventListener("submit", submit, { once: true });
+      submit();
+    });
+    await postSeen;
+    const requestsDuringDoubleSubmit = bookingRequests;
+    releasePost();
+
+    expect(requestsDuringDoubleSubmit).toBe(1);
+    await expect(page.getByRole("heading", { name: "Запись подтверждена" })).toBeVisible();
+  });
+
   test("сохраняет данные после 5xx и разрешает ручной повтор", async ({ page }) => {
     await startBackend(["--booking-failures", "1"]);
     await openConfirmation(page);

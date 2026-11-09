@@ -1,9 +1,12 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from threading import Event
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 
+import calendar_api.availability as availability
 from calendar_api.main import app
 
 client = TestClient(app)
@@ -69,6 +72,55 @@ def test_availability_marks_booked_interval_and_updates_only_its_day() -> None:
         "available": False,
     }
     assert availability["intervals"][1]["available"] is True
+
+
+def test_availability_stays_consistent_during_concurrent_booking(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    event_type = client.get("/api/event-types").json()[0]
+    tomorrow = datetime.now(MOSCOW).date() + timedelta(days=1)
+    days_computed = Event()
+    finish_availability = Event()
+    original_intervals_for = availability.intervals_for
+    calls = 0
+
+    def pause_before_requested_date(event_type, day, *args):
+        nonlocal calls
+        intervals = original_intervals_for(event_type, day, *args)
+        calls += 1
+        if calls == 14:
+            days_computed.set()
+            assert finish_availability.wait(timeout=5)
+        return intervals
+
+    monkeypatch.setattr(availability, "intervals_for", pause_before_requested_date)
+    url = f"/api/event-types/{event_type['id']}/availability"
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pending_availability = pool.submit(
+            client.get, url, params={"date": tomorrow.isoformat()}
+        )
+        try:
+            assert days_computed.wait(timeout=5)
+            created = client.post(
+                "/api/bookings",
+                json={
+                    "eventTypeId": event_type["id"],
+                    "startsAt": f"{tomorrow.isoformat()}T09:00+03:00",
+                    "guestName": "Иван",
+                    "guestEmail": "ivan@example.com",
+                },
+                headers={"Idempotency-Key": str(uuid4())},
+            )
+            assert created.status_code == 201
+        finally:
+            finish_availability.set()
+        response = pending_availability.result(timeout=5)
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["days"][0]["availableSlots"] == sum(
+        interval["available"] for interval in result["intervals"]
+    )
 
 
 def test_availability_rejects_unknown_or_malformed_event_type() -> None:

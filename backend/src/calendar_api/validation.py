@@ -11,23 +11,41 @@ from .errors import FieldError, api_error, field_error
 DURATION_MESSAGE = "Выберите длительность: 30, 60, 90 или 120 минут"
 
 
-def validate_event_type_name(value: object) -> tuple[str, list[FieldError]]:
+def validate_single_line_name(
+    value: object, field: str, label: str
+) -> tuple[str, list[FieldError]]:
     if value is None:
-        return "", [field_error("name", "REQUIRED", "Введите название")]
+        return "", [field_error(field, "REQUIRED", f"Введите {label}")]
     if not isinstance(value, str):
-        return "", [field_error("name", "INVALID_TYPE", "Название должно быть строкой")]
+        return "", [
+            field_error(
+                field, "INVALID_TYPE", f"{label.capitalize()} должно быть строкой"
+            )
+        ]
     name = value.strip()
     if not name:
-        return name, [field_error("name", "REQUIRED", "Введите название")]
+        return name, [field_error(field, "REQUIRED", f"Введите {label}")]
     if "\n" in name or "\r" in name:
         return name, [
-            field_error("name", "NOT_SINGLE_LINE", "Название должно быть одной строкой")
+            field_error(
+                field,
+                "NOT_SINGLE_LINE",
+                f"{label.capitalize()} должно быть одной строкой",
+            )
         ]
     if len(name) > 100:
         return name, [
-            field_error("name", "TOO_LONG", "Название не должно превышать 100 символов")
+            field_error(
+                field,
+                "TOO_LONG",
+                f"{label.capitalize()} не должно превышать 100 символов",
+            )
         ]
     return name, []
+
+
+def validate_event_type_name(value: object) -> tuple[str, list[FieldError]]:
+    return validate_single_line_name(value, "name", "название")
 
 
 def validate_event_type_description(
@@ -58,22 +76,8 @@ def validate_event_type_duration(value: object) -> tuple[int, list[FieldError]]:
 
 
 def validate_guest_name(value: Any) -> FieldError | None:
-    if value is None:
-        return field_error("guestName", "REQUIRED", "Введите имя")
-    if not isinstance(value, str):
-        return field_error("guestName", "INVALID_TYPE", "Имя должно быть строкой")
-    name = value.strip()
-    if not name:
-        return field_error("guestName", "REQUIRED", "Введите имя")
-    if "\n" in name or "\r" in name:
-        return field_error(
-            "guestName", "NOT_SINGLE_LINE", "Имя должно быть одной строкой"
-        )
-    if len(name) > 100:
-        return field_error(
-            "guestName", "TOO_LONG", "Имя не должно превышать 100 символов"
-        )
-    return None
+    _, errors = validate_single_line_name(value, "guestName", "имя")
+    return errors[0] if errors else None
 
 
 def validate_guest_email(value: Any) -> FieldError | None:
