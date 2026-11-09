@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-import calendar_api.main as main
+import calendar_api.clock as clock
 from calendar_api.main import BOOKINGS, EVENT_TYPES, Booking, app
 
 client = TestClient(app)
@@ -202,6 +202,8 @@ def test_create_booking_rejects_malformed_json_without_pinning_key() -> None:
         ("eventTypeId", 123, "INVALID_TYPE"),
         ("startsAt", 123, "INVALID_TYPE"),
         ("startsAt", "2026-01-01T09:00:00+03:00", "INVALID_DATETIME"),
+        ("startsAt", "2026-01-01T09:00:00.123+03:00", "INVALID_DATETIME"),
+        ("startsAt", "2026-01-01T09:00+00:00", "INVALID_DATETIME"),
         ("startsAt", "2026-01-01T09:00Z", "INVALID_DATETIME"),
         ("guestName", 123, "INVALID_TYPE"),
         ("guestName", "   ", "REQUIRED"),
@@ -234,6 +236,29 @@ def test_create_booking_validates_each_field(
     assert field_errors[0]["field"] == field
     assert field_errors[0]["code"] == code
     assert field_errors[0]["message"]
+
+
+@pytest.mark.parametrize("control", ["\x00", "\x1f", "\x7f", "\x80", "\x9f"])
+def test_create_booking_rejects_control_characters_in_guest_email(
+    control: str,
+) -> None:
+    response = client.post(
+        "/api/bookings",
+        json={
+            **booking_payload(),
+            "guestEmail": f"guest{control}@example.com",
+        },
+        headers={"Idempotency-Key": str(uuid4())},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["fieldErrors"] == [
+        {
+            "field": "guestEmail",
+            "code": "INVALID_EMAIL",
+            "message": "Введите корректный email",
+        }
+    ]
 
 
 @pytest.mark.parametrize("event_type_id", ["not-a-uuid", str(uuid4())])
@@ -378,7 +403,7 @@ def test_successful_retry_bypasses_expired_booking_window(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        main,
+        clock,
         "moscow_now",
         lambda: datetime(2026, 2, 1, 12, 0, tzinfo=MOSCOW),
     )
@@ -395,7 +420,7 @@ def test_successful_retry_bypasses_expired_booking_window(
     )
     assert created.status_code == 201
     monkeypatch.setattr(
-        main,
+        clock,
         "moscow_now",
         lambda: datetime(2026, 3, 1, 12, 0, tzinfo=MOSCOW),
     )
@@ -490,7 +515,7 @@ def test_list_upcoming_bookings_filters_sorts_and_returns_full_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "calendar_api.main.current_time",
+        "calendar_api.clock.moscow_now",
         lambda: datetime.fromisoformat("2026-03-27T12:00:00+03:00"),
     )
     add_booking(
@@ -573,7 +598,7 @@ def test_list_upcoming_bookings_returns_empty_array_when_nothing_remains(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "calendar_api.main.current_time",
+        "calendar_api.clock.moscow_now",
         lambda: datetime.fromisoformat("2026-03-27T12:00:00+03:00"),
     )
     add_booking(

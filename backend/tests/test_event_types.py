@@ -67,10 +67,11 @@ def test_create_event_type_normalizes_and_appends_type() -> None:
     assert client.get("/api/event-types").json() == [*before, created]
 
 
-def test_create_event_type_rejects_invalid_json() -> None:
+@pytest.mark.parametrize("content", ["{", b'{"name":"\xff"}'])
+def test_create_event_type_rejects_invalid_json(content: str | bytes) -> None:
     response = client.post(
         "/api/event-types",
-        content="{",
+        content=content,
         headers={"Content-Type": "application/json"},
     )
 
