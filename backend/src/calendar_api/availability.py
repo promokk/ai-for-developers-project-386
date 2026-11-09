@@ -1,3 +1,4 @@
+import asyncio
 from datetime import date as calendar_date
 from datetime import datetime, time, timedelta
 
@@ -6,12 +7,18 @@ from fastapi.responses import JSONResponse
 from . import clock
 from .clock import MOSCOW
 from .errors import api_error, field_error
-from .models import Availability, AvailabilityDay, AvailabilityInterval, EventType
-from .store import BOOKINGS, find_event_type
+from .models import (
+    Availability,
+    AvailabilityDay,
+    AvailabilityInterval,
+    Booking,
+    EventType,
+)
+from .store import BOOKING_LOCK, BOOKINGS, find_event_type
 
 
 def intervals_for(
-    event_type: EventType, day: calendar_date
+    event_type: EventType, day: calendar_date, bookings: list[Booking]
 ) -> list[AvailabilityInterval]:
     intervals: list[AvailabilityInterval] = []
     start = datetime.combine(day, time(9), MOSCOW)
@@ -24,7 +31,7 @@ def intervals_for(
                 ends_at=end.isoformat(timespec="minutes"),
                 available=not any(
                     booking.starts_at < end and start < booking.ends_at
-                    for booking in BOOKINGS
+                    for booking in bookings
                 ),
             )
         )
@@ -32,7 +39,30 @@ def intervals_for(
     return intervals
 
 
-def availability_for(
+def build_availability(
+    event_type: EventType,
+    requested_date: calendar_date,
+    first_day: calendar_date,
+    bookings: list[Booking],
+) -> Availability:
+    days = []
+    for offset in range(14):
+        day = first_day + timedelta(days=offset)
+        intervals = intervals_for(event_type, day, bookings)
+        days.append(
+            AvailabilityDay(
+                date=day.isoformat(),
+                available_slots=sum(interval.available for interval in intervals),
+            )
+        )
+    return Availability(
+        date=requested_date.isoformat(),
+        days=days,
+        intervals=intervals_for(event_type, requested_date, bookings),
+    )
+
+
+async def availability_for(
     event_type_id: str, date: str | None
 ) -> Availability | JSONResponse:
     event_type = find_event_type(event_type_id)
@@ -76,18 +106,8 @@ def availability_for(
                 )
             ],
         )
-    days = []
-    for offset in range(14):
-        day = first_day + timedelta(days=offset)
-        intervals = intervals_for(event_type, day)
-        days.append(
-            AvailabilityDay(
-                date=day.isoformat(),
-                available_slots=sum(interval.available for interval in intervals),
-            )
-        )
-    return Availability(
-        date=date,
-        days=days,
-        intervals=intervals_for(event_type, requested_date),
+    async with BOOKING_LOCK:
+        bookings = BOOKINGS.copy()
+    return await asyncio.to_thread(
+        build_availability, event_type, requested_date, first_day, bookings
     )

@@ -46,6 +46,19 @@ def list_bookings(scope: str | None) -> list[Booking] | JSONResponse:
     )
 
 
+def replay_idempotency_result(key: str, fingerprint: str) -> JSONResponse | None:
+    saved = IDEMPOTENCY_RESULTS.get(key)
+    if saved is None:
+        return None
+    if saved.fingerprint != fingerprint:
+        return api_error(
+            409,
+            "IDEMPOTENCY_KEY_REUSED",
+            IDEMPOTENCY_REUSED_MESSAGE,
+        )
+    return JSONResponse(status_code=saved.status_code, content=saved.content)
+
+
 async def commit_booking(
     key: str,
     fingerprint: str,
@@ -54,15 +67,9 @@ async def commit_booking(
     starts_at: datetime,
 ) -> Booking | JSONResponse:
     async with BOOKING_LOCK:
-        saved = IDEMPOTENCY_RESULTS.get(key)
-        if saved:
-            if saved.fingerprint != fingerprint:
-                return api_error(
-                    409,
-                    "IDEMPOTENCY_KEY_REUSED",
-                    IDEMPOTENCY_REUSED_MESSAGE,
-                )
-            return JSONResponse(status_code=saved.status_code, content=saved.content)
+        replay = replay_idempotency_result(key, fingerprint)
+        if replay is not None:
+            return replay
         ends_at = starts_at + timedelta(minutes=event_type.duration_minutes)
         if any(
             booking.starts_at < ends_at and starts_at < booking.ends_at
@@ -123,15 +130,9 @@ def normalize_idempotency_key(raw_key: str | None) -> str | JSONResponse:
 
 async def create_booking(key: str, payload: dict[str, Any]) -> Booking | JSONResponse:
     fingerprint = request_fingerprint(payload)
-    saved = IDEMPOTENCY_RESULTS.get(key)
-    if saved:
-        if saved.fingerprint != fingerprint:
-            return api_error(
-                409,
-                "IDEMPOTENCY_KEY_REUSED",
-                IDEMPOTENCY_REUSED_MESSAGE,
-            )
-        return JSONResponse(status_code=saved.status_code, content=saved.content)
+    replay = replay_idempotency_result(key, fingerprint)
+    if replay is not None:
+        return replay
     errors = validate_booking_payload(payload)
     if errors:
         return api_error(422, "VALIDATION_ERROR", "Проверьте введённые данные", errors)
