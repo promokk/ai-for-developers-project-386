@@ -19,7 +19,8 @@
   (`@hey-api/openapi-ts`) в `frontend/src/api/`.
 
 Эндпоинты (префикс `/api`): `GET /api/health`, `GET /api/event-types`,
-`GET /api/bookings`, `POST /api/bookings` (201). Модель `EventType`: `id`,
+`POST /api/event-types` (201), `GET /api/bookings`, `POST /api/bookings`
+(201). Модель `EventType`: `id`,
 `name`, `description`, `durationMinutes`. Модель `Booking`: `id`, `name`,
 `startsAt`, `endsAt` (camelCase в JSON; в Python — snake_case через
 `pydantic.alias_generators.to_camel`).

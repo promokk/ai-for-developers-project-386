@@ -59,6 +59,37 @@ paths:
                   $ref: '#/components/schemas/EventType'
       tags:
         - event-types
+    post:
+      operationId: Api_createEventType
+      description: Создать тип события.
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventType'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Client error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - event-types
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTypeCreate'
   /api/health:
     get:
       operationId: Api_health
@@ -75,6 +106,25 @@ paths:
         - service
 components:
   schemas:
+    ApiError:
+      type: object
+      required:
+        - code
+        - message
+        - fieldErrors
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код ошибки.
+        message:
+          type: string
+          description: Сообщение для пользователя.
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Ошибки полей в порядке проверки.
+      description: Согласованная ошибка API.
     Booking:
       type: object
       required:
@@ -139,6 +189,40 @@ components:
           type: integer
           description: Длительность события в минутах.
       description: Тип события, доступный для бронирования.
+    EventTypeCreate:
+      type: object
+      required:
+        - name
+        - durationMinutes
+      properties:
+        name:
+          type: string
+          description: Название типа события.
+        description:
+          type: string
+          nullable: true
+          description: Необязательное описание типа события.
+        durationMinutes:
+          type: integer
+          description: 'Длительность события: 30, 60, 90 или 120 минут.'
+      description: Данные для создания типа события.
+    FieldError:
+      type: object
+      required:
+        - field
+        - code
+        - message
+      properties:
+        field:
+          type: string
+          description: Имя поля.
+        code:
+          type: string
+          description: Машиночитаемый код ошибки.
+        message:
+          type: string
+          description: Сообщение для пользователя.
+      description: Ошибка конкретного поля запроса.
     Health:
       type: object
       required:
