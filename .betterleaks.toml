@@ -1,0 +1,10 @@
+title = "call-calendar betterleaks config"
+
+# Ложные срабатывания: код сторонних библиотек в .venv/node_modules и каталог скиллов агентов.
+[allowlist]
+description = "Исключаем vendored-код и каталоги инструментов"
+paths = [
+  '''\.venv/''',
+  '''node_modules/''',
+  '''^\.agents/''',
+]

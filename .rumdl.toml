@@ -1,0 +1,10 @@
+[global]
+# MD013 (длина строки) и MD033 (inline HTML) мешают: в README нужны <details> и длинные URL
+disable = ["MD013", "MD033"]
+exclude = [
+  ".agents",
+  ".git",
+  "contracts/openapi",
+  "frontend/src/api",
+  "node_modules",
+]

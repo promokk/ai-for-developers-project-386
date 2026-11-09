@@ -1,0 +1,10 @@
+{
+  "name": "contracts",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@typespec/compiler": "1.17.0",
+    "@typespec/http": "1.17.0",
+    "@typespec/openapi3": "1.17.0"
+  }
+}

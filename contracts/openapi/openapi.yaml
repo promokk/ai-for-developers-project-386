@@ -1,0 +1,378 @@
+openapi: 3.0.0
+info:
+  title: Call Calendar API
+  description: 'API сервиса «Календарь звонков»: бронирование слотов для звонков.'
+  version: 0.0.0
+tags:
+  - name: service
+  - name: event-types
+  - name: bookings
+paths:
+  /api/bookings:
+    get:
+      operationId: Api_listBookings
+      description: Предстоящие бронирования в хронологическом порядке.
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - upcoming
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+        '422':
+          description: Ошибка валидации параметров запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - bookings
+    post:
+      operationId: Api_createBooking
+      description: Создать бронирование.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: The request conflicts with the current state of the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Ошибка валидации параметров запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - bookings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreate'
+  /api/event-types:
+    get:
+      operationId: Api_listEventTypes
+      description: Список типов событий в порядке создания.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventType'
+      tags:
+        - event-types
+    post:
+      operationId: Api_createEventType
+      description: Создать тип события.
+      parameters: []
+      responses:
+        '201':
+          description: The request has succeeded and a new resource has been created as a result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventType'
+        '400':
+          description: The server could not understand the request due to invalid syntax.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Ошибка валидации параметров запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - event-types
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventTypeCreate'
+  /api/event-types/{eventTypeId}/availability:
+    get:
+      operationId: Api_getAvailability
+      description: Доступность типа события на выбранную дату и окно записи.
+      parameters:
+        - name: eventTypeId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+          explode: false
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Availability'
+        '404':
+          description: The server cannot find the requested resource.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Ошибка валидации параметров запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      tags:
+        - event-types
+  /api/health:
+    get:
+      operationId: Api_health
+      description: Проверка доступности сервиса.
+      parameters: []
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+      tags:
+        - service
+components:
+  schemas:
+    ApiError:
+      type: object
+      required:
+        - code
+        - message
+        - fieldErrors
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код ошибки.
+        message:
+          type: string
+          description: Сообщение для пользователя.
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Ошибки полей запроса.
+      description: Общий формат ошибки API.
+    Availability:
+      type: object
+      required:
+        - date
+        - days
+        - intervals
+      properties:
+        date:
+          type: string
+          description: Запрошенная дата.
+        days:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailabilityDay'
+          description: Ровно 14 дней окна записи.
+        intervals:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailabilityInterval'
+          description: Все интервалы запрошенной даты.
+      description: Доступность выбранного типа события.
+    AvailabilityDay:
+      type: object
+      required:
+        - date
+        - availableSlots
+      properties:
+        date:
+          type: string
+          description: Дата в формате ГГГГ-ММ-ДД.
+        availableSlots:
+          type: integer
+          description: Количество свободных интервалов.
+      description: Счётчик доступных слотов на календарный день.
+    AvailabilityInterval:
+      type: object
+      required:
+        - startsAt
+        - endsAt
+        - available
+      properties:
+        startsAt:
+          type: string
+          description: Начало интервала в Europe/Moscow.
+        endsAt:
+          type: string
+          description: Окончание интервала в Europe/Moscow.
+        available:
+          type: boolean
+          description: Доступен ли интервал для бронирования.
+      description: Интервал выбранного дня.
+    Booking:
+      type: object
+      required:
+        - id
+        - guestName
+        - guestEmail
+        - startsAt
+        - endsAt
+        - eventType
+      properties:
+        id:
+          type: string
+          description: Идентификатор бронирования.
+        guestName:
+          type: string
+          description: Имя гостя.
+        guestEmail:
+          type: string
+          description: Email гостя.
+        startsAt:
+          type: string
+          description: Начало слота в Europe/Moscow с точностью до минуты.
+        endsAt:
+          type: string
+          description: Конец слота в Europe/Moscow с точностью до минуты.
+        eventType:
+          allOf:
+            - $ref: '#/components/schemas/EventType'
+          description: Забронированный тип события.
+      description: Бронирование слота в календаре.
+    BookingCreate:
+      type: object
+      required:
+        - eventTypeId
+        - startsAt
+        - guestName
+        - guestEmail
+      properties:
+        eventTypeId:
+          type: string
+          description: Идентификатор выбранного типа события.
+        startsAt:
+          type: string
+          description: Начало слота в формате ГГГГ-ММ-ДДTЧЧ:ММ+03:00.
+        guestName:
+          type: string
+          description: Имя гостя.
+        guestEmail:
+          type: string
+          description: Email гостя.
+      description: Данные для создания бронирования.
+    EventType:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - durationMinutes
+      properties:
+        id:
+          type: string
+          description: Серверный идентификатор типа события.
+        name:
+          type: string
+          description: Название типа события.
+        description:
+          type: string
+          nullable: true
+          description: Необязательное описание типа события.
+        durationMinutes:
+          type: integer
+          description: Длительность события в минутах.
+      description: Тип события, доступный для бронирования.
+    EventTypeCreate:
+      type: object
+      required:
+        - name
+        - durationMinutes
+      properties:
+        name:
+          type: string
+          description: Название типа события.
+        description:
+          type: string
+          nullable: true
+          description: Необязательное описание типа события.
+        durationMinutes:
+          type: integer
+          description: 'Длительность события: 30, 60, 90 или 120 минут.'
+      description: Данные для создания типа события.
+    FieldError:
+      type: object
+      required:
+        - field
+        - code
+        - message
+      properties:
+        field:
+          type: string
+          description: Имя поля или заголовка.
+        code:
+          type: string
+          description: Машиночитаемый код ошибки.
+        message:
+          type: string
+          description: Сообщение для пользователя.
+      description: Ошибка конкретного поля запроса.
+    Health:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Текущий статус (`ok` — сервис работает).
+      description: Состояние сервиса.
+servers:
+  - url: http://127.0.0.1:8000
+    description: Локальная разработка
+    variables: {}

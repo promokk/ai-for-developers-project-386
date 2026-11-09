@@ -1,0 +1,55 @@
+name: check
+
+on:
+  push:
+    branches:
+      - "**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+
+      - name: Install JS dependencies
+        run: mise run install:js
+
+      - name: Install Playwright Chromium
+        run: mise exec -- pnpm --dir frontend exec playwright install --with-deps chromium
+
+      - name: Run all checks
+        run: mise run check
+
+      - name: Conventional Commits
+        shell: bash
+        run: |
+          before="${{ github.event.before }}"
+          if [ "$before" = "0000000000000000000000000000000000000000" ]; then
+            pnpm exec commitlint --last --verbose
+          else
+            pnpm exec commitlint --from "$before" --verbose
+          fi
+
+      - name: OpenAPI breaking changes
+        shell: bash
+        run: |
+          base=origin/HEAD
+          spec=contracts/openapi/openapi.yaml
+          if git cat-file -e "$base:$spec" 2>/dev/null; then
+            tmp=$(mktemp)
+            git show "$base:$spec" > "$tmp"
+            oasdiff breaking "$tmp" "$spec"
+          else
+            echo "Base spec not found, skipping"
+          fi
