@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -8,6 +8,11 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 app = FastAPI(title="Call Calendar API", version="0.1.0")
+MOSCOW_TIMEZONE = timezone(timedelta(hours=3))
+
+
+def current_time() -> datetime:
+    return datetime.now(MOSCOW_TIMEZONE)
 
 
 class Health(BaseModel):
@@ -31,8 +36,19 @@ class BookingBase(BaseModel):
     ends_at: datetime
 
 
-class Booking(BookingBase):
+class LegacyBooking(BookingBase):
     id: str
+
+
+class Booking(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+    id: str
+    guest_name: str
+    guest_email: str
+    starts_at: datetime
+    ends_at: datetime
+    event_type: EventType
 
 
 EVENT_TYPES: list[EventType] = [
@@ -63,7 +79,7 @@ EVENT_TYPES: list[EventType] = [
         duration_minutes=90,
     ),
 ]
-BOOKINGS: list[Booking] = []
+BOOKINGS: list[Booking | LegacyBooking] = []
 
 
 @app.get("/api/health")
@@ -187,13 +203,32 @@ async def create_event_type(request: Request) -> EventType | JSONResponse:
     return created
 
 
-@app.get("/api/bookings")
-def list_bookings() -> list[Booking]:
-    return BOOKINGS
+@app.get("/api/bookings", response_model=list[Booking])
+def list_bookings(scope: str | None = None) -> list[Booking] | JSONResponse:
+    if scope is None:
+        code, message = "REQUIRED", "Укажите область списка"
+    elif scope != "upcoming":
+        code, message = "INVALID_SCOPE", "Допустимое значение scope: upcoming"
+    else:
+        now = current_time()
+        upcoming = [
+            booking
+            for booking in BOOKINGS
+            if isinstance(booking, Booking) and booking.ends_at > now
+        ]
+        return sorted(upcoming, key=lambda booking: booking.starts_at)
+    return JSONResponse(
+        status_code=422,
+        content={
+            "code": "VALIDATION_ERROR",
+            "message": "Проверьте введённые данные",
+            "fieldErrors": [{"field": "scope", "code": code, "message": message}],
+        },
+    )
 
 
 @app.post("/api/bookings", status_code=201)
-def create_booking(booking: BookingBase) -> Booking:
-    created = Booking(id=str(uuid4()), **booking.model_dump())
+def create_booking(booking: BookingBase) -> LegacyBooking:
+    created = LegacyBooking(id=str(uuid4()), **booking.model_dump())
     BOOKINGS.append(created)
     return created
