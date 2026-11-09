@@ -28,6 +28,18 @@ model EventType {
   durationMinutes: integer;
 }
 
+/** Данные для создания типа события. */
+model EventTypeCreate {
+  /** Название типа события. */
+  name: string;
+
+  /** Необязательное описание типа события. */
+  description?: string | null;
+
+  /** Длительность события: 30, 60, 90 или 120 минут. */
+  durationMinutes: integer;
+}
+
 /** Бронирование слота в календаре. */
 model Booking {
   /** Идентификатор бронирования. */
@@ -120,6 +132,30 @@ namespace Api {
   @route("/event-types")
   @tag("event-types")
   op listEventTypes(): EventType[];
+
+  /** Создать тип события. */
+  @post
+  @route("/event-types")
+  @tag("event-types")
+  op createEventType(@body eventType: EventTypeCreate): {
+    @statusCode
+    statusCode: 201;
+
+    @body
+    eventType: EventType;
+  } | {
+    @statusCode
+    statusCode: 400;
+
+    @body
+    error: ApiError;
+  } | {
+    @statusCode
+    statusCode: 422;
+
+    @body
+    error: ApiError;
+  };
 
   /** Предстоящие бронирования в хронологическом порядке. */
   @get

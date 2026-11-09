@@ -1,3 +1,4 @@
+import EventTypeCreatePage from "./EventTypeCreatePage";
 import EventTypesPage from "./EventTypesPage";
 import UpcomingEventsPage from "./UpcomingEventsPage";
 
@@ -39,7 +40,9 @@ export default function App() {
         </div>
       </header>
 
-      {window.location.pathname === "/event-types" ? (
+      {window.location.pathname === "/event-types/new" ? (
+        <EventTypeCreatePage />
+      ) : window.location.pathname === "/event-types" ? (
         <EventTypesPage />
       ) : window.location.pathname === "/events" ? (
         <UpcomingEventsPage />
