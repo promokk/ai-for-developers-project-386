@@ -1,3 +1,4 @@
+import BookingPage from "./BookingPage";
 import EventTypesPage from "./EventTypesPage";
 
 const features = [
@@ -37,6 +38,8 @@ export default function App() {
 
       {window.location.pathname === "/event-types" ? (
         <EventTypesPage />
+      ) : window.location.pathname === "/book" ? (
+        <BookingPage />
       ) : (
         <main className="container hero">
           <section className="hero-content">

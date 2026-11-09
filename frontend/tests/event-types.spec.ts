@@ -12,7 +12,7 @@ async function waitForBackend(server: ChildProcess) {
       throw new Error("Backend exited before becoming ready");
     }
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/health");
+      const response = await fetch("http://127.0.0.1:8001/api/health");
       if (response.ok) {
         return;
       }
@@ -55,7 +55,7 @@ test.describe.serial("типы событий", () => {
     await page.goto("/");
     const requestThroughProxy = page.waitForRequest((request) => {
       const url = new URL(request.url());
-      return url.origin === "http://127.0.0.1:5173" && url.pathname === "/api/event-types";
+      return url.origin === "http://127.0.0.1:5174" && url.pathname === "/api/event-types";
     });
     await page
       .getByRole("navigation")

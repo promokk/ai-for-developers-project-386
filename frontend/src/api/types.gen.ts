@@ -5,6 +5,74 @@ export type ClientOptions = {
 };
 
 /**
+ * Общий формат ошибки API.
+ */
+export type ApiError = {
+    /**
+     * Машиночитаемый код ошибки.
+     */
+    code: string;
+    /**
+     * Сообщение для пользователя.
+     */
+    message: string;
+    /**
+     * Ошибки полей запроса.
+     */
+    fieldErrors: Array<FieldError>;
+};
+
+/**
+ * Доступность выбранного типа события.
+ */
+export type Availability = {
+    /**
+     * Запрошенная дата.
+     */
+    date: string;
+    /**
+     * Ровно 14 дней окна записи.
+     */
+    days: Array<AvailabilityDay>;
+    /**
+     * Все интервалы запрошенной даты.
+     */
+    intervals: Array<AvailabilityInterval>;
+};
+
+/**
+ * Счётчик доступных слотов на календарный день.
+ */
+export type AvailabilityDay = {
+    /**
+     * Дата в формате ГГГГ-ММ-ДД.
+     */
+    date: string;
+    /**
+     * Количество свободных интервалов.
+     */
+    availableSlots: number;
+};
+
+/**
+ * Интервал выбранного дня.
+ */
+export type AvailabilityInterval = {
+    /**
+     * Начало интервала в Europe/Moscow.
+     */
+    startsAt: string;
+    /**
+     * Окончание интервала в Europe/Moscow.
+     */
+    endsAt: string;
+    /**
+     * Доступен ли интервал для бронирования.
+     */
+    available: boolean;
+};
+
+/**
  * Бронирование слота в календаре.
  */
 export type Booking = {
@@ -13,17 +81,25 @@ export type Booking = {
      */
     id: string;
     /**
-     * Название звонка.
+     * Имя гостя.
      */
-    name: string;
+    guestName: string;
     /**
-     * Начало слота.
+     * Email гостя.
+     */
+    guestEmail: string;
+    /**
+     * Начало слота в Europe/Moscow с точностью до минуты.
      */
     startsAt: string;
     /**
-     * Конец слота.
+     * Конец слота в Europe/Moscow с точностью до минуты.
      */
     endsAt: string;
+    /**
+     * Забронированный тип события.
+     */
+    eventType: EventType;
 };
 
 /**
@@ -31,17 +107,21 @@ export type Booking = {
  */
 export type BookingCreate = {
     /**
-     * Название звонка.
+     * Идентификатор выбранного типа события.
      */
-    name: string;
+    eventTypeId: string;
     /**
-     * Начало слота.
+     * Начало слота в формате ГГГГ-ММ-ДДTЧЧ:ММ+03:00.
      */
     startsAt: string;
     /**
-     * Конец слота.
+     * Имя гостя.
      */
-    endsAt: string;
+    guestName: string;
+    /**
+     * Email гостя.
+     */
+    guestEmail: string;
 };
 
 /**
@@ -64,6 +144,24 @@ export type EventType = {
      * Длительность события в минутах.
      */
     durationMinutes: number;
+};
+
+/**
+ * Ошибка конкретного поля запроса.
+ */
+export type FieldError = {
+    /**
+     * Имя поля или заголовка.
+     */
+    field: string;
+    /**
+     * Машиночитаемый код ошибки.
+     */
+    code: string;
+    /**
+     * Сообщение для пользователя.
+     */
+    message: string;
 };
 
 /**
@@ -94,10 +192,34 @@ export type ApiListBookingsResponse = ApiListBookingsResponses[keyof ApiListBook
 
 export type ApiCreateBookingData = {
     body: BookingCreate;
+    headers: {
+        'Idempotency-Key': string;
+    };
     path?: never;
     query?: never;
     url: '/api/bookings';
 };
+
+export type ApiCreateBookingErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * The request conflicts with the current state of the server.
+     */
+    409: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type ApiCreateBookingError = ApiCreateBookingErrors[keyof ApiCreateBookingErrors];
 
 export type ApiCreateBookingResponses = {
     /**
@@ -123,6 +245,39 @@ export type ApiListEventTypesResponses = {
 };
 
 export type ApiListEventTypesResponse = ApiListEventTypesResponses[keyof ApiListEventTypesResponses];
+
+export type ApiGetAvailabilityData = {
+    body?: never;
+    path: {
+        eventTypeId: string;
+    };
+    query: {
+        date: string;
+    };
+    url: '/api/event-types/{eventTypeId}/availability';
+};
+
+export type ApiGetAvailabilityErrors = {
+    /**
+     * The server cannot find the requested resource.
+     */
+    404: ApiError;
+    /**
+     * Client error
+     */
+    422: ApiError;
+};
+
+export type ApiGetAvailabilityError = ApiGetAvailabilityErrors[keyof ApiGetAvailabilityErrors];
+
+export type ApiGetAvailabilityResponses = {
+    /**
+     * The request has succeeded.
+     */
+    200: Availability;
+};
+
+export type ApiGetAvailabilityResponse = ApiGetAvailabilityResponses[keyof ApiGetAvailabilityResponses];
 
 export type ApiHealthData = {
     body?: never;

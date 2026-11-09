@@ -33,26 +33,116 @@ model Booking {
   /** Идентификатор бронирования. */
   id: string;
 
-  /** Название звонка. */
-  name: string;
+  /** Имя гостя. */
+  guestName: string;
 
-  /** Начало слота. */
-  startsAt: utcDateTime;
+  /** Email гостя. */
+  guestEmail: string;
 
-  /** Конец слота. */
-  endsAt: utcDateTime;
+  /** Начало слота в Europe/Moscow с точностью до минуты. */
+  startsAt: string;
+
+  /** Конец слота в Europe/Moscow с точностью до минуты. */
+  endsAt: string;
+
+  /** Забронированный тип события. */
+  eventType: EventType;
 }
 
 /** Данные для создания бронирования. */
 model BookingCreate {
-  /** Название звонка. */
-  name: string;
+  /** Идентификатор выбранного типа события. */
+  eventTypeId: string;
 
-  /** Начало слота. */
-  startsAt: utcDateTime;
+  /** Начало слота в формате ГГГГ-ММ-ДДTЧЧ:ММ+03:00. */
+  startsAt: string;
 
-  /** Конец слота. */
-  endsAt: utcDateTime;
+  /** Имя гостя. */
+  guestName: string;
+
+  /** Email гостя. */
+  guestEmail: string;
+}
+
+/** Счётчик доступных слотов на календарный день. */
+model AvailabilityDay {
+  /** Дата в формате ГГГГ-ММ-ДД. */
+  date: string;
+
+  /** Количество свободных интервалов. */
+  availableSlots: integer;
+}
+
+/** Интервал выбранного дня. */
+model AvailabilityInterval {
+  /** Начало интервала в Europe/Moscow. */
+  startsAt: string;
+
+  /** Окончание интервала в Europe/Moscow. */
+  endsAt: string;
+
+  /** Доступен ли интервал для бронирования. */
+  available: boolean;
+}
+
+/** Доступность выбранного типа события. */
+model Availability {
+  /** Запрошенная дата. */
+  date: string;
+
+  /** Ровно 14 дней окна записи. */
+  days: AvailabilityDay[];
+
+  /** Все интервалы запрошенной даты. */
+  intervals: AvailabilityInterval[];
+}
+
+/** Ошибка конкретного поля запроса. */
+model FieldError {
+  /** Имя поля или заголовка. */
+  field: string;
+
+  /** Машиночитаемый код ошибки. */
+  code: string;
+
+  /** Сообщение для пользователя. */
+  message: string;
+}
+
+/** Общий формат ошибки API. */
+model ApiError {
+  /** Машиночитаемый код ошибки. */
+  code: string;
+
+  /** Сообщение для пользователя. */
+  message: string;
+
+  /** Ошибки полей запроса. */
+  fieldErrors: FieldError[];
+}
+
+@error
+model BadRequestError {
+  @statusCode statusCode: 400;
+  @body error: ApiError;
+}
+
+@error
+model NotFoundError {
+  @statusCode statusCode: 404;
+  @body error: ApiError;
+}
+
+@error
+model ConflictError {
+  @statusCode statusCode: 409;
+  @body error: ApiError;
+}
+
+@error
+model ValidationError {
+  @statusCode statusCode: 422;
+  @body error: ApiError;
 }
 
 @route("/api")
@@ -69,6 +159,15 @@ namespace Api {
   @tag("event-types")
   op listEventTypes(): EventType[];
 
+  /** Доступность типа события на выбранную дату и окно записи. */
+  @get
+  @route("/event-types/{eventTypeId}/availability")
+  @tag("event-types")
+  op getAvailability(
+    @path eventTypeId: string,
+    @query date: string,
+  ): Availability | NotFoundError | ValidationError;
+
   /** Список всех бронирований. */
   @get
   @route("/bookings")
@@ -79,11 +178,14 @@ namespace Api {
   @post
   @route("/bookings")
   @tag("bookings")
-  op createBooking(@body booking: BookingCreate): {
+  op createBooking(
+    @header("Idempotency-Key") idempotencyKey: string,
+    @body booking: BookingCreate,
+  ): {
     @statusCode
     statusCode: 201;
 
     @body
     booking: Booking;
-  };
+  } | BadRequestError | NotFoundError | ConflictError | ValidationError;
 }
