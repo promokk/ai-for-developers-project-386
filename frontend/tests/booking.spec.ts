@@ -319,7 +319,7 @@ test.describe.serial("бронирование: повторная отправ�
     await context.setOffline(false);
     await page.getByRole("button", { name: "Попробовать снова" }).click();
     await expect(page.getByRole("heading", { name: "Запись подтверждена" })).toBeVisible();
-    const bookings = await request.get("/api/bookings");
+    const bookings = await request.get("/api/bookings?scope=upcoming");
     expect(await bookings.json()).toHaveLength(1);
   });
 
@@ -340,7 +340,7 @@ test.describe.serial("бронирование: повторная отправ�
     await page.getByRole("button", { name: "Попробовать снова" }).click();
 
     await expect(page.getByRole("heading", { name: "Запись подтверждена" })).toBeVisible();
-    expect(await (await request.get("/api/bookings")).json()).toHaveLength(1);
+    expect(await (await request.get("/api/bookings?scope=upcoming")).json()).toHaveLength(1);
   });
 
   test("повтор после потерянного успешного ответа не создаёт дубль", async ({ page, request }) => {
@@ -352,7 +352,7 @@ test.describe.serial("бронирование: повторная отправ�
     await page.getByRole("button", { name: "Попробовать снова" }).click();
 
     await expect(page.getByRole("heading", { name: "Запись подтверждена" })).toBeVisible();
-    expect(await (await request.get("/api/bookings")).json()).toHaveLength(1);
+    expect(await (await request.get("/api/bookings?scope=upcoming")).json()).toHaveLength(1);
   });
 
   test("запрещает изменение данных после закрепления ключа", async ({ page }) => {

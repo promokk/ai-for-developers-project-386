@@ -9,10 +9,24 @@ from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
 from pydantic.alias_generators import to_camel
 
 app = FastAPI(title="Call Calendar API", version="0.1.0")
+MOSCOW = timezone(timedelta(hours=3), "Europe/Moscow")
+FieldError = dict[str, str]
+DURATION_MESSAGE = "Выберите длительность: 30, 60, 90 или 120 минут"
+IDEMPOTENCY_REUSED_MESSAGE = (
+    "Данные изменились после попытки отправки. Начните бронирование заново"
+)
+
+
+def current_time() -> datetime:
+    return datetime.now(MOSCOW)
+
+
+def moscow_now() -> datetime:
+    return datetime.now(MOSCOW)
 
 
 class Health(BaseModel):
@@ -34,9 +48,13 @@ class Booking(BaseModel):
     id: str
     guest_name: str
     guest_email: str
-    starts_at: str
-    ends_at: str
+    starts_at: datetime
+    ends_at: datetime
     event_type: EventType
+
+    @field_serializer("starts_at", "ends_at")
+    def serialize_time(self, value: datetime) -> str:
+        return value.isoformat(timespec="minutes")
 
 
 @dataclass
@@ -44,6 +62,29 @@ class IdempotencyResult:
     fingerprint: str
     status_code: int
     content: dict[str, Any]
+
+
+class AvailabilityDay(BaseModel):
+    date: str
+    available_slots: int
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class AvailabilityInterval(BaseModel):
+    starts_at: str
+    ends_at: str
+    available: bool
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
+class Availability(BaseModel):
+    date: str
+    days: list[AvailabilityDay]
+    intervals: list[AvailabilityInterval]
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
 EVENT_TYPES: list[EventType] = [
@@ -77,44 +118,13 @@ EVENT_TYPES: list[EventType] = [
 BOOKINGS: list[Booking] = []
 IDEMPOTENCY_RESULTS: dict[str, IdempotencyResult] = {}
 BOOKING_LOCK = asyncio.Lock()
-MOSCOW = timezone(timedelta(hours=3), "Europe/Moscow")
-IDEMPOTENCY_REUSED_MESSAGE = (
-    "Данные изменились после попытки отправки. Начните бронирование заново"
-)
-
-
-class AvailabilityDay(BaseModel):
-    date: str
-    available_slots: int
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-
-class AvailabilityInterval(BaseModel):
-    starts_at: str
-    ends_at: str
-    available: bool
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-
-class Availability(BaseModel):
-    date: str
-    days: list[AvailabilityDay]
-    intervals: list[AvailabilityInterval]
-
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-
-
-def moscow_now() -> datetime:
-    return datetime.now(MOSCOW)
 
 
 def api_error(
     status_code: int,
     code: str,
     message: str,
-    field_errors: list[dict[str, str]] | None = None,
+    field_errors: list[FieldError] | None = None,
 ) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
@@ -126,6 +136,10 @@ def api_error(
     )
 
 
+def field_error(field: str, code: str, message: str) -> FieldError:
+    return {"field": field, "code": code, "message": message}
+
+
 def find_event_type(value: Any) -> EventType | None:
     if not isinstance(value, str):
         return None
@@ -134,6 +148,101 @@ def find_event_type(value: Any) -> EventType | None:
     except ValueError:
         return None
     return next((item for item in EVENT_TYPES if item.id == event_type_id), None)
+
+
+def validate_event_type_name(value: object) -> tuple[str, list[FieldError]]:
+    if value is None:
+        return "", [field_error("name", "REQUIRED", "Введите название")]
+    if not isinstance(value, str):
+        return "", [field_error("name", "INVALID_TYPE", "Название должно быть строкой")]
+    name = value.strip()
+    if not name:
+        return name, [field_error("name", "REQUIRED", "Введите название")]
+    if "\n" in name or "\r" in name:
+        return name, [
+            field_error("name", "NOT_SINGLE_LINE", "Название должно быть одной строкой")
+        ]
+    if len(name) > 100:
+        return name, [
+            field_error("name", "TOO_LONG", "Название не должно превышать 100 символов")
+        ]
+    return name, []
+
+
+def validate_event_type_description(
+    value: object,
+) -> tuple[str | None, list[FieldError]]:
+    if value is None:
+        return None, []
+    if not isinstance(value, str):
+        return None, [
+            field_error("description", "INVALID_TYPE", "Описание должно быть строкой")
+        ]
+    description = value.strip()
+    if len(description) > 500:
+        return description, [
+            field_error(
+                "description", "TOO_LONG", "Описание не должно превышать 500 символов"
+            )
+        ]
+    return description or None, []
+
+
+def validate_event_type_duration(value: object) -> tuple[int, list[FieldError]]:
+    if value is None:
+        return 0, [field_error("durationMinutes", "REQUIRED", DURATION_MESSAGE)]
+    if type(value) is not int or value not in {30, 60, 90, 120}:
+        return 0, [field_error("durationMinutes", "INVALID_DURATION", DURATION_MESSAGE)]
+    return value, []
+
+
+@app.get("/api/health")
+def health() -> Health:
+    return Health(status="ok")
+
+
+@app.get("/api/event-types")
+def list_event_types() -> list[EventType]:
+    return EVENT_TYPES
+
+
+@app.post("/api/event-types", status_code=201, response_model=EventType)
+async def create_event_type(request: Request) -> EventType | JSONResponse:
+    try:
+        payload = await request.json()
+    except json.JSONDecodeError:
+        return api_error(400, "INVALID_JSON", "Некорректное тело запроса")
+    if not isinstance(payload, dict):
+        payload = {}
+
+    name, name_errors = validate_event_type_name(payload.get("name"))
+    description, description_errors = validate_event_type_description(
+        payload.get("description")
+    )
+    duration, duration_errors = validate_event_type_duration(
+        payload.get("durationMinutes")
+    )
+    unknown_errors = [
+        field_error(field, "UNKNOWN_FIELD", "Неизвестное поле")
+        for field in payload
+        if field not in {"name", "description", "durationMinutes"}
+    ]
+    errors = [
+        *name_errors,
+        *description_errors,
+        *duration_errors,
+        *unknown_errors,
+    ]
+    if errors:
+        return api_error(422, "VALIDATION_ERROR", "Проверьте введённые данные", errors)
+    created = EventType(
+        id=str(uuid4()),
+        name=name,
+        description=description,
+        duration_minutes=duration,
+    )
+    EVENT_TYPES.append(created)
+    return created
 
 
 def request_fingerprint(payload: dict[str, Any]) -> str:
@@ -147,11 +256,7 @@ def request_fingerprint(payload: dict[str, Any]) -> str:
     return json.dumps(normalized, ensure_ascii=False, sort_keys=True)
 
 
-def field_error(field: str, code: str, message: str) -> dict[str, str]:
-    return {"field": field, "code": code, "message": message}
-
-
-def validate_guest_name(value: Any) -> dict[str, str] | None:
+def validate_guest_name(value: Any) -> FieldError | None:
     if value is None:
         return field_error("guestName", "REQUIRED", "Введите имя")
     if not isinstance(value, str):
@@ -170,7 +275,7 @@ def validate_guest_name(value: Any) -> dict[str, str] | None:
     return None
 
 
-def validate_guest_email(value: Any) -> dict[str, str] | None:
+def validate_guest_email(value: Any) -> FieldError | None:
     if value is None:
         return field_error("guestEmail", "REQUIRED", "Введите email")
     if not isinstance(value, str):
@@ -229,8 +334,8 @@ def validate_booking_time(
     return None
 
 
-def validate_booking_payload(payload: dict[str, Any]) -> list[dict[str, str]]:
-    errors: list[dict[str, str]] = []
+def validate_booking_payload(payload: dict[str, Any]) -> list[FieldError]:
+    errors: list[FieldError] = []
     event_type_id = payload.get("eventTypeId")
     if event_type_id is None:
         errors.append(field_error("eventTypeId", "REQUIRED", "Выберите тип события"))
@@ -255,7 +360,7 @@ def validate_booking_payload(payload: dict[str, Any]) -> list[dict[str, str]]:
                 "startsAt",
                 "INVALID_DATETIME",
                 "Укажите дату и время в формате "
-                "ГГГГ-\u041c\u041c-\u0414\u0414TЧЧ:\u041c\u041c+03:00",
+                "ГГГГ-\u041c\u041c-ДДTЧЧ:\u041c\u041c+03:00",
             )
         )
     for validator, field in (
@@ -287,24 +392,13 @@ def intervals_for(
                 starts_at=start.isoformat(timespec="minutes"),
                 ends_at=end.isoformat(timespec="minutes"),
                 available=not any(
-                    datetime.fromisoformat(booking.starts_at) < end
-                    and start < datetime.fromisoformat(booking.ends_at)
+                    booking.starts_at < end and start < booking.ends_at
                     for booking in BOOKINGS
                 ),
             )
         )
         start += timedelta(minutes=30)
     return intervals
-
-
-@app.get("/api/health")
-def health() -> Health:
-    return Health(status="ok")
-
-
-@app.get("/api/event-types")
-def list_event_types() -> list[EventType]:
-    return EVENT_TYPES
 
 
 @app.get("/api/event-types/{eventTypeId}/availability", response_model=Availability)
@@ -319,7 +413,7 @@ def get_availability(
             422,
             "VALIDATION_ERROR",
             "Проверьте введённые данные",
-            [{"field": "date", "code": "REQUIRED", "message": "Укажите дату"}],
+            [field_error("date", "REQUIRED", "Укажите дату")],
         )
     try:
         requested_date = calendar_date.fromisoformat(date)
@@ -331,14 +425,11 @@ def get_availability(
             "VALIDATION_ERROR",
             "Проверьте введённые данные",
             [
-                {
-                    "field": "date",
-                    "code": "INVALID_DATE",
-                    "message": (
-                        "Укажите существующую дату в формате "
-                        "ГГГГ-\u041c\u041c-\u0414\u0414"
-                    ),
-                }
+                field_error(
+                    "date",
+                    "INVALID_DATE",
+                    "Укажите существующую дату в формате ГГГГ-\u041c\u041c-ДД",
+                )
             ],
         )
     first_day = moscow_now().date() + timedelta(days=1)
@@ -348,11 +439,11 @@ def get_availability(
             "VALIDATION_ERROR",
             "Проверьте введённые данные",
             [
-                {
-                    "field": "date",
-                    "code": "DATE_OUTSIDE_BOOKING_WINDOW",
-                    "message": "Дата должна входить в окно записи",
-                }
+                field_error(
+                    "date",
+                    "DATE_OUTSIDE_BOOKING_WINDOW",
+                    "Дата должна входить в окно записи",
+                )
             ],
         )
     days = []
@@ -372,9 +463,21 @@ def get_availability(
     )
 
 
-@app.get("/api/bookings")
-def list_bookings() -> list[Booking]:
-    return BOOKINGS
+@app.get("/api/bookings", response_model=list[Booking])
+def list_bookings(scope: str | None = None) -> list[Booking] | JSONResponse:
+    if scope is None:
+        code, message = "REQUIRED", "Укажите область списка"
+    elif scope != "upcoming":
+        code, message = "INVALID_SCOPE", "Допустимое значение scope: upcoming"
+    else:
+        upcoming = [booking for booking in BOOKINGS if booking.ends_at > current_time()]
+        return sorted(upcoming, key=lambda booking: booking.starts_at)
+    return api_error(
+        422,
+        "VALIDATION_ERROR",
+        "Проверьте введённые данные",
+        [field_error("scope", code, message)],
+    )
 
 
 async def commit_booking(
@@ -396,8 +499,7 @@ async def commit_booking(
             return JSONResponse(status_code=saved.status_code, content=saved.content)
         ends_at = starts_at + timedelta(minutes=event_type.duration_minutes)
         if any(
-            datetime.fromisoformat(booking.starts_at) < ends_at
-            and starts_at < datetime.fromisoformat(booking.ends_at)
+            booking.starts_at < ends_at and starts_at < booking.ends_at
             for booking in BOOKINGS
         ):
             content = {
@@ -411,8 +513,8 @@ async def commit_booking(
             id=str(uuid4()),
             guest_name=payload["guestName"].strip(),
             guest_email=payload["guestEmail"].strip(),
-            starts_at=starts_at.isoformat(timespec="minutes"),
-            ends_at=ends_at.isoformat(timespec="minutes"),
+            starts_at=starts_at,
+            ends_at=ends_at,
             event_type=event_type,
         )
         BOOKINGS.append(created)

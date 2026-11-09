@@ -28,6 +28,18 @@ model EventType {
   durationMinutes: integer;
 }
 
+/** Данные для создания типа события. */
+model EventTypeCreate {
+  /** Название типа события. */
+  name: string;
+
+  /** Необязательное описание типа события. */
+  description?: string | null;
+
+  /** Длительность события: 30, 60, 90 или 120 минут. */
+  durationMinutes: integer;
+}
+
 /** Бронирование слота в календаре. */
 model Booking {
   /** Идентификатор бронирования. */
@@ -139,6 +151,7 @@ model ConflictError {
   @body error: ApiError;
 }
 
+/** Ошибка валидации параметров запроса. */
 @error
 model ValidationError {
   @statusCode statusCode: 422;
@@ -159,6 +172,18 @@ namespace Api {
   @tag("event-types")
   op listEventTypes(): EventType[];
 
+  /** Создать тип события. */
+  @post
+  @route("/event-types")
+  @tag("event-types")
+  op createEventType(@body eventType: EventTypeCreate): {
+    @statusCode
+    statusCode: 201;
+
+    @body
+    eventType: EventType;
+  } | BadRequestError | ValidationError;
+
   /** Доступность типа события на выбранную дату и окно записи. */
   @get
   @route("/event-types/{eventTypeId}/availability")
@@ -168,11 +193,11 @@ namespace Api {
     @query date: string,
   ): Availability | NotFoundError | ValidationError;
 
-  /** Список всех бронирований. */
+  /** Предстоящие бронирования в хронологическом порядке. */
   @get
   @route("/bookings")
   @tag("bookings")
-  op listBookings(): Booking[];
+  op listBookings(@query scope: "upcoming"): Booking[] | ValidationError;
 
   /** Создать бронирование. */
   @post

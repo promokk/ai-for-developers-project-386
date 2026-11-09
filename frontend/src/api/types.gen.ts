@@ -147,6 +147,24 @@ export type EventType = {
 };
 
 /**
+ * Данные для создания типа события.
+ */
+export type EventTypeCreate = {
+    /**
+     * Название типа события.
+     */
+    name: string;
+    /**
+     * Необязательное описание типа события.
+     */
+    description?: string | null;
+    /**
+     * Длительность события: 30, 60, 90 или 120 минут.
+     */
+    durationMinutes: number;
+};
+
+/**
  * Ошибка конкретного поля запроса.
  */
 export type FieldError = {
@@ -177,9 +195,20 @@ export type Health = {
 export type ApiListBookingsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        scope: 'upcoming';
+    };
     url: '/api/bookings';
 };
+
+export type ApiListBookingsErrors = {
+    /**
+     * Ошибка валидации параметров запроса.
+     */
+    422: ApiError;
+};
+
+export type ApiListBookingsError = ApiListBookingsErrors[keyof ApiListBookingsErrors];
 
 export type ApiListBookingsResponses = {
     /**
@@ -214,7 +243,7 @@ export type ApiCreateBookingErrors = {
      */
     409: ApiError;
     /**
-     * Client error
+     * Ошибка валидации параметров запроса.
      */
     422: ApiError;
 };
@@ -246,6 +275,35 @@ export type ApiListEventTypesResponses = {
 
 export type ApiListEventTypesResponse = ApiListEventTypesResponses[keyof ApiListEventTypesResponses];
 
+export type ApiCreateEventTypeData = {
+    body: EventTypeCreate;
+    path?: never;
+    query?: never;
+    url: '/api/event-types';
+};
+
+export type ApiCreateEventTypeErrors = {
+    /**
+     * The server could not understand the request due to invalid syntax.
+     */
+    400: ApiError;
+    /**
+     * Ошибка валидации параметров запроса.
+     */
+    422: ApiError;
+};
+
+export type ApiCreateEventTypeError = ApiCreateEventTypeErrors[keyof ApiCreateEventTypeErrors];
+
+export type ApiCreateEventTypeResponses = {
+    /**
+     * The request has succeeded and a new resource has been created as a result.
+     */
+    201: EventType;
+};
+
+export type ApiCreateEventTypeResponse = ApiCreateEventTypeResponses[keyof ApiCreateEventTypeResponses];
+
 export type ApiGetAvailabilityData = {
     body?: never;
     path: {
@@ -263,7 +321,7 @@ export type ApiGetAvailabilityErrors = {
      */
     404: ApiError;
     /**
-     * Client error
+     * Ошибка валидации параметров запроса.
      */
     422: ApiError;
 };
