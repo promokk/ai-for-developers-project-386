@@ -52,6 +52,16 @@ mise run build   # сборка фронтенда
 Коммиты — по Conventional Commits (`feat:`, `fix:`, …), проверяются
 commitlint. Правила для агентов — в [AGENTS.md](AGENTS.md).
 
+## Релизы
+
+Релизы автоматизированы через release-please. После появления подходящего
+Conventional Commit (`feat:`, `fix:` и др.) в `main` workflow
+`.github/workflows/release-please.yml` создаёт или обновляет release PR.
+
+Для публикации релиза проверьте и влейте release PR. После этого workflow
+создаст GitHub Release и тег. Номер версии и changelog обновляются в release PR;
+создавать релиз вручную для проверки процесса не нужно.
+
 ---
 
 <details>
