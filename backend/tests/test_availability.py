@@ -143,17 +143,29 @@ def test_availability_rejects_dates_outside_booking_window(offset: int) -> None:
 
 
 @pytest.mark.parametrize(
-    ("event_type_index", "count", "last_start", "last_end"),
+    ("duration", "count", "last_start", "last_end"),
     [
-        (0, 18, "17:30", "18:00"),
-        (1, 17, "17:00", "18:00"),
-        (2, 16, "16:30", "18:00"),
+        (30, 18, "17:30", "18:00"),
+        (60, 17, "17:00", "18:00"),
+        (90, 16, "16:30", "18:00"),
+        (120, 15, "16:00", "18:00"),
     ],
 )
 def test_availability_respects_duration_on_thirty_minute_grid(
-    event_type_index: int, count: int, last_start: str, last_end: str
+    duration: int, count: int, last_start: str, last_end: str
 ) -> None:
-    event_type = client.get("/api/event-types").json()[event_type_index]
+    event_types = client.get("/api/event-types").json()
+    event_type = next(
+        (item for item in event_types if item["durationMinutes"] == duration),
+        None,
+    )
+    if event_type is None:
+        created = client.post(
+            "/api/event-types",
+            json={"name": "Длинная сессия", "durationMinutes": duration},
+        )
+        assert created.status_code == 201
+        event_type = created.json()
     tomorrow = datetime.now(MOSCOW).date() + timedelta(days=1)
 
     response = client.get(
@@ -164,6 +176,7 @@ def test_availability_respects_duration_on_thirty_minute_grid(
     intervals = response.json()["intervals"]
     assert len(intervals) == count
     assert response.json()["days"][0]["availableSlots"] == count
+    assert intervals[0]["startsAt"] == f"{tomorrow.isoformat()}T09:00+03:00"
     assert intervals[-1]["startsAt"] == f"{tomorrow.isoformat()}T{last_start}+03:00"
     assert intervals[-1]["endsAt"] == f"{tomorrow.isoformat()}T{last_end}+03:00"
 

@@ -1,10 +1,12 @@
 import argparse
 import asyncio
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 
 import uvicorn
-from calendar_api import main
+from calendar_api import clock
 from calendar_api.main import BOOKINGS, EVENT_TYPES, Booking, app
+from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 
 parser = argparse.ArgumentParser()
@@ -26,10 +28,10 @@ if args.empty:
 if args.now:
     fixed_now = datetime.fromisoformat(args.now)
 
-    def current_time() -> datetime:
+    def fixed_time() -> datetime:
         return fixed_now
 
-    main.current_time = current_time
+    clock.moscow_now = fixed_time
 if args.agenda:
     BOOKINGS.extend(
         [
@@ -70,7 +72,10 @@ if args.agenda:
 
 
 @app.middleware("http")
-async def control_event_types(request, call_next):
+async def control_event_types(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
     global remaining_failures
     global remaining_booking_failures
     global remaining_booking_delays

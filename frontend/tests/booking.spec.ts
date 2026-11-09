@@ -1,51 +1,9 @@
-import { spawn, type ChildProcess } from "node:child_process";
-import { once } from "node:events";
-import { setTimeout as delay } from "node:timers/promises";
+import type { Page } from "@playwright/test";
 
-import { expect, test, type Page } from "@playwright/test";
-
-let backend: ChildProcess | undefined;
-
-async function startBackend(args: string[] = []) {
-  backend = spawn(
-    "uv",
-    ["run", "--directory", "../backend", "python", "../frontend/tests/backend_server.py", ...args],
-    { detached: process.platform !== "win32", stdio: "ignore" },
-  );
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    if (backend.exitCode !== null) {
-      throw new Error("Backend exited before becoming ready");
-    }
-    try {
-      const response = await fetch("http://127.0.0.1:8001/api/health");
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // Сервер ещё запускается.
-    }
-    await delay(100);
-  }
-  throw new Error("Backend did not become ready");
-}
+import { moscowDate } from "../src/moscowDate";
+import { expect, startBackend, test } from "./backend";
 
 test.describe.serial("бронирование гостем", () => {
-  test.afterEach(async () => {
-    if (backend?.exitCode === null && backend.pid) {
-      if (process.platform === "win32") {
-        const taskkill = spawn("taskkill", ["/pid", String(backend.pid), "/T", "/F"], {
-          stdio: "ignore",
-        });
-        await once(taskkill, "exit");
-      } else {
-        const exited = once(backend, "exit");
-        process.kill(-backend.pid, "SIGTERM");
-        await Promise.race([exited, delay(5000)]);
-      }
-    }
-    backend = undefined;
-  });
-
   test("проходит путь от выбора слота до успеха и нового сценария", async ({ page }) => {
     await startBackend();
     await page.goto("/book");
@@ -77,37 +35,31 @@ test.describe.serial("бронирование гостем", () => {
     await expect(page.getByRole("group", { name: "Тип события" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Продолжить" })).toBeDisabled();
   });
+
+  test("отклоняет управляющие символы в email до отправки", async ({ page }) => {
+    await startBackend();
+    let bookingRequests = 0;
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname === "/api/bookings" && request.method() === "POST") {
+        bookingRequests += 1;
+      }
+    });
+
+    for (const control of ["\u0000", "\u001f", "\u007f", "\u0080", "\u009f"]) {
+      await openConfirmation(page);
+      await page.getByLabel("Email").fill(`guest${control}@example.com`);
+      await page.getByRole("button", { name: "Подтвердить запись" }).click();
+      await expect(page.getByText("Введите корректный email", { exact: true })).toBeVisible();
+      expect(bookingRequests).toBe(0);
+    }
+  });
 });
 
 function tomorrowMoscow() {
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Moscow",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  const date = new Date(`${today}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + 1);
-  return date.toISOString().slice(0, 10);
+  return moscowDate(1);
 }
 
 test.describe.serial("бронирование: выбор и конфликт", () => {
-  test.afterEach(async () => {
-    if (backend?.exitCode === null && backend.pid) {
-      if (process.platform === "win32") {
-        const taskkill = spawn("taskkill", ["/pid", String(backend.pid), "/T", "/F"], {
-          stdio: "ignore",
-        });
-        await once(taskkill, "exit");
-      } else {
-        const exited = once(backend, "exit");
-        process.kill(-backend.pid, "SIGTERM");
-        await Promise.race([exited, delay(5000)]);
-      }
-    }
-    backend = undefined;
-  });
-
   test("показывает занятый интервал и сбрасывает время при смене типа", async ({
     page,
     request,
@@ -173,6 +125,7 @@ test.describe.serial("бронирование: выбор и конфликт",
     await expect(
       page.getByRole("list", { name: "Интервалы" }).getByRole("button").first(),
     ).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Продолжить" })).toBeDisabled();
     await page.getByRole("list", { name: "Интервалы" }).getByRole("button").nth(1).click();
     await page.getByRole("button", { name: "Продолжить" }).click();
     await expect(page.getByLabel("Имя")).toHaveValue("Иван Петров");
@@ -181,22 +134,6 @@ test.describe.serial("бронирование: выбор и конфликт",
 });
 
 test.describe.serial("бронирование: пустые состояния", () => {
-  test.afterEach(async () => {
-    if (backend?.exitCode === null && backend.pid) {
-      if (process.platform === "win32") {
-        const taskkill = spawn("taskkill", ["/pid", String(backend.pid), "/T", "/F"], {
-          stdio: "ignore",
-        });
-        await once(taskkill, "exit");
-      } else {
-        const exited = once(backend, "exit");
-        process.kill(-backend.pid, "SIGTERM");
-        await Promise.race([exited, delay(5000)]);
-      }
-    }
-    backend = undefined;
-  });
-
   test("предлагает ближайший свободный день для занятой даты", async ({ page, request }) => {
     test.setTimeout(60_000);
     await startBackend();
@@ -274,22 +211,6 @@ async function openConfirmation(page: Page) {
 }
 
 test.describe.serial("бронирование: повторная отправка", () => {
-  test.afterEach(async () => {
-    if (backend?.exitCode === null && backend.pid) {
-      if (process.platform === "win32") {
-        const taskkill = spawn("taskkill", ["/pid", String(backend.pid), "/T", "/F"], {
-          stdio: "ignore",
-        });
-        await once(taskkill, "exit");
-      } else {
-        const exited = once(backend, "exit");
-        process.kill(-backend.pid, "SIGTERM");
-        await Promise.race([exited, delay(5000)]);
-      }
-    }
-    backend = undefined;
-  });
-
   test("сохраняет данные после 5xx и разрешает ручной повтор", async ({ page }) => {
     await startBackend(["--booking-failures", "1"]);
     await openConfirmation(page);
