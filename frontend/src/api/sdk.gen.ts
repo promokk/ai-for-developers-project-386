@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ApiCreateBookingData, ApiCreateBookingResponses, ApiHealthData, ApiHealthResponses, ApiListBookingsData, ApiListBookingsResponses, ApiListEventTypesData, ApiListEventTypesResponses } from './types.gen';
+import type { ApiCreateBookingData, ApiCreateBookingResponses, ApiHealthData, ApiHealthResponses, ApiListBookingsData, ApiListBookingsErrors, ApiListBookingsResponses, ApiListEventTypesData, ApiListEventTypesResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -19,12 +19,12 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 };
 
 /**
- * Список всех бронирований.
+ * Предстоящие бронирования в хронологическом порядке.
  */
-export const apiListBookings = <ThrowOnError extends boolean = false>(options?: Options<ApiListBookingsData, ThrowOnError>): RequestResult<ApiListBookingsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ApiListBookingsResponses, unknown, ThrowOnError>({ url: '/api/bookings', ...options });
+export const apiListBookings = <ThrowOnError extends boolean = false>(options: Options<ApiListBookingsData, ThrowOnError>): RequestResult<ApiListBookingsResponses, ApiListBookingsErrors, ThrowOnError> => (options.client ?? client).get<ApiListBookingsResponses, ApiListBookingsErrors, ThrowOnError>({ url: '/api/bookings', ...options });
 
 /**
- * Создать бронирование.
+ * Создать бронирование по устаревшему контракту.
  */
 export const apiCreateBooking = <ThrowOnError extends boolean = false>(options: Options<ApiCreateBookingData, ThrowOnError>): RequestResult<ApiCreateBookingResponses, unknown, ThrowOnError> => (options.client ?? client).post<ApiCreateBookingResponses, unknown, ThrowOnError>({
     url: '/api/bookings',

@@ -11,8 +11,16 @@ paths:
   /api/bookings:
     get:
       operationId: Api_listBookings
-      description: Список всех бронирований.
-      parameters: []
+      description: Предстоящие бронирования в хронологическом порядке.
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - upcoming
+          explode: false
       responses:
         '200':
           description: The request has succeeded.
@@ -22,11 +30,17 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Booking'
+        '422':
+          description: Ошибка валидации параметров запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
       tags:
         - bookings
     post:
       operationId: Api_createBooking
-      description: Создать бронирование.
+      description: Создать бронирование по устаревшему контракту.
       parameters: []
       responses:
         '201':
@@ -34,7 +48,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Booking'
+                $ref: '#/components/schemas/LegacyBooking'
       tags:
         - bookings
       requestBody:
@@ -75,20 +89,44 @@ paths:
         - service
 components:
   schemas:
+    ApiError:
+      type: object
+      required:
+        - code
+        - message
+        - fieldErrors
+      properties:
+        code:
+          type: string
+          description: Машиночитаемый код ошибки.
+        message:
+          type: string
+          description: Сообщение для пользователя.
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+          description: Ошибки полей запроса.
+      description: Общий формат ошибки API.
     Booking:
       type: object
       required:
         - id
-        - name
+        - guestName
+        - guestEmail
         - startsAt
         - endsAt
+        - eventType
       properties:
         id:
           type: string
           description: Идентификатор бронирования.
-        name:
+        guestName:
           type: string
-          description: Название звонка.
+          description: Имя гостя.
+        guestEmail:
+          type: string
+          description: Email гостя.
         startsAt:
           type: string
           format: date-time
@@ -96,7 +134,11 @@ components:
         endsAt:
           type: string
           format: date-time
-          description: Конец слота.
+          description: Вычисленное сервером окончание слота.
+        eventType:
+          allOf:
+            - $ref: '#/components/schemas/EventType'
+          description: Тип забронированного события.
       description: Бронирование слота в календаре.
     BookingCreate:
       type: object
@@ -116,7 +158,7 @@ components:
           type: string
           format: date-time
           description: Конец слота.
-      description: Данные для создания бронирования.
+      description: Данные для создания бронирования по устаревшему контракту.
     EventType:
       type: object
       required:
@@ -139,6 +181,23 @@ components:
           type: integer
           description: Длительность события в минутах.
       description: Тип события, доступный для бронирования.
+    FieldError:
+      type: object
+      required:
+        - field
+        - code
+        - message
+      properties:
+        field:
+          type: string
+          description: Имя поля.
+        code:
+          type: string
+          description: Машиночитаемый код ошибки.
+        message:
+          type: string
+          description: Сообщение для пользователя.
+      description: Ошибка конкретного поля запроса.
     Health:
       type: object
       required:
@@ -148,6 +207,29 @@ components:
           type: string
           description: Текущий статус (`ok` — сервис работает).
       description: Состояние сервиса.
+    LegacyBooking:
+      type: object
+      required:
+        - id
+        - name
+        - startsAt
+        - endsAt
+      properties:
+        id:
+          type: string
+          description: Идентификатор бронирования.
+        name:
+          type: string
+          description: Название звонка.
+        startsAt:
+          type: string
+          format: date-time
+          description: Начало слота.
+        endsAt:
+          type: string
+          format: date-time
+          description: Конец слота.
+      description: Устаревшее бронирование до перехода POST на общую модель.
 servers:
   - url: http://127.0.0.1:8000
     description: Локальная разработка

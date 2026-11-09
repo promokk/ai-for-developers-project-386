@@ -33,6 +33,27 @@ model Booking {
   /** Идентификатор бронирования. */
   id: string;
 
+  /** Имя гостя. */
+  guestName: string;
+
+  /** Email гостя. */
+  guestEmail: string;
+
+  /** Начало слота. */
+  startsAt: utcDateTime;
+
+  /** Вычисленное сервером окончание слота. */
+  endsAt: utcDateTime;
+
+  /** Тип забронированного события. */
+  eventType: EventType;
+}
+
+/** Устаревшее бронирование до перехода POST на общую модель. */
+model LegacyBooking {
+  /** Идентификатор бронирования. */
+  id: string;
+
   /** Название звонка. */
   name: string;
 
@@ -43,7 +64,7 @@ model Booking {
   endsAt: utcDateTime;
 }
 
-/** Данные для создания бронирования. */
+/** Данные для создания бронирования по устаревшему контракту. */
 model BookingCreate {
   /** Название звонка. */
   name: string;
@@ -53,6 +74,37 @@ model BookingCreate {
 
   /** Конец слота. */
   endsAt: utcDateTime;
+}
+
+/** Ошибка конкретного поля запроса. */
+model FieldError {
+  /** Имя поля. */
+  field: string;
+
+  /** Машиночитаемый код ошибки. */
+  code: string;
+
+  /** Сообщение для пользователя. */
+  message: string;
+}
+
+/** Общий формат ошибки API. */
+model ApiError {
+  /** Машиночитаемый код ошибки. */
+  code: string;
+
+  /** Сообщение для пользователя. */
+  message: string;
+
+  /** Ошибки полей запроса. */
+  fieldErrors: FieldError[];
+}
+
+/** Ошибка валидации параметров запроса. */
+@error
+model ValidationError {
+  @statusCode statusCode: 422;
+  @body body: ApiError;
 }
 
 @route("/api")
@@ -69,13 +121,13 @@ namespace Api {
   @tag("event-types")
   op listEventTypes(): EventType[];
 
-  /** Список всех бронирований. */
+  /** Предстоящие бронирования в хронологическом порядке. */
   @get
   @route("/bookings")
   @tag("bookings")
-  op listBookings(): Booking[];
+  op listBookings(@query scope: "upcoming"): Booking[] | ValidationError;
 
-  /** Создать бронирование. */
+  /** Создать бронирование по устаревшему контракту. */
   @post
   @route("/bookings")
   @tag("bookings")
@@ -84,6 +136,6 @@ namespace Api {
     statusCode: 201;
 
     @body
-    booking: Booking;
+    booking: LegacyBooking;
   };
 }
