@@ -5,6 +5,24 @@ export type ClientOptions = {
 };
 
 /**
+ * Общий формат ошибки API.
+ */
+export type ApiError = {
+    /**
+     * Машиночитаемый код ошибки.
+     */
+    code: string;
+    /**
+     * Сообщение для пользователя.
+     */
+    message: string;
+    /**
+     * Ошибки полей запроса.
+     */
+    fieldErrors: Array<FieldError>;
+};
+
+/**
  * Бронирование слота в календаре.
  */
 export type Booking = {
@@ -13,21 +31,29 @@ export type Booking = {
      */
     id: string;
     /**
-     * Название звонка.
+     * Имя гостя.
      */
-    name: string;
+    guestName: string;
+    /**
+     * Email гостя.
+     */
+    guestEmail: string;
     /**
      * Начало слота.
      */
     startsAt: string;
     /**
-     * Конец слота.
+     * Вычисленное сервером окончание слота.
      */
     endsAt: string;
+    /**
+     * Тип забронированного события.
+     */
+    eventType: EventType;
 };
 
 /**
- * Данные для создания бронирования.
+ * Данные для создания бронирования по устаревшему контракту.
  */
 export type BookingCreate = {
     /**
@@ -67,6 +93,24 @@ export type EventType = {
 };
 
 /**
+ * Ошибка конкретного поля запроса.
+ */
+export type FieldError = {
+    /**
+     * Имя поля.
+     */
+    field: string;
+    /**
+     * Машиночитаемый код ошибки.
+     */
+    code: string;
+    /**
+     * Сообщение для пользователя.
+     */
+    message: string;
+};
+
+/**
  * Состояние сервиса.
  */
 export type Health = {
@@ -76,12 +120,45 @@ export type Health = {
     status: string;
 };
 
+/**
+ * Устаревшее бронирование до перехода POST на общую модель.
+ */
+export type LegacyBooking = {
+    /**
+     * Идентификатор бронирования.
+     */
+    id: string;
+    /**
+     * Название звонка.
+     */
+    name: string;
+    /**
+     * Начало слота.
+     */
+    startsAt: string;
+    /**
+     * Конец слота.
+     */
+    endsAt: string;
+};
+
 export type ApiListBookingsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query: {
+        scope: 'upcoming';
+    };
     url: '/api/bookings';
 };
+
+export type ApiListBookingsErrors = {
+    /**
+     * Ошибка валидации параметров запроса.
+     */
+    422: ApiError;
+};
+
+export type ApiListBookingsError = ApiListBookingsErrors[keyof ApiListBookingsErrors];
 
 export type ApiListBookingsResponses = {
     /**
@@ -103,7 +180,7 @@ export type ApiCreateBookingResponses = {
     /**
      * The request has succeeded and a new resource has been created as a result.
      */
-    201: Booking;
+    201: LegacyBooking;
 };
 
 export type ApiCreateBookingResponse = ApiCreateBookingResponses[keyof ApiCreateBookingResponses];

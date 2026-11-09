@@ -1,4 +1,5 @@
 import EventTypesPage from "./EventTypesPage";
+import UpcomingEventsPage from "./UpcomingEventsPage";
 
 const features = [
   "Бронирование слотов с 09:00 до 18:00.",
@@ -28,6 +29,9 @@ export default function App() {
             <a className="nav-link" href="/event-types">
               Типы событий
             </a>
+            <a className="nav-link" href="/events">
+              Предстоящие события
+            </a>
             <a className="nav-link" href="/book">
               Записаться
             </a>
@@ -37,6 +41,8 @@ export default function App() {
 
       {window.location.pathname === "/event-types" ? (
         <EventTypesPage />
+      ) : window.location.pathname === "/events" ? (
+        <UpcomingEventsPage />
       ) : (
         <main className="container hero">
           <section className="hero-content">

@@ -3,6 +3,7 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
+  workers: 1,
   forbidOnly: true,
   reporter: process.env.CI ? "github" : "list",
   use: {
