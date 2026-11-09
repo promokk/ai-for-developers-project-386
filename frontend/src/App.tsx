@@ -1,3 +1,4 @@
+import BookingPage from "./BookingPage";
 import EventTypeCreatePage from "./EventTypeCreatePage";
 import EventTypesPage from "./EventTypesPage";
 import UpcomingEventsPage from "./UpcomingEventsPage";
@@ -44,6 +45,8 @@ export default function App() {
         <EventTypeCreatePage />
       ) : window.location.pathname === "/event-types" ? (
         <EventTypesPage />
+      ) : window.location.pathname === "/book" ? (
+        <BookingPage />
       ) : window.location.pathname === "/events" ? (
         <UpcomingEventsPage />
       ) : (

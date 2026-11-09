@@ -51,46 +51,67 @@ model Booking {
   /** Email гостя. */
   guestEmail: string;
 
-  /** Начало слота. */
-  startsAt: utcDateTime;
+  /** Начало слота в Europe/Moscow с точностью до минуты. */
+  startsAt: string;
 
-  /** Вычисленное сервером окончание слота. */
-  endsAt: utcDateTime;
+  /** Конец слота в Europe/Moscow с точностью до минуты. */
+  endsAt: string;
 
-  /** Тип забронированного события. */
+  /** Забронированный тип события. */
   eventType: EventType;
 }
 
-/** Устаревшее бронирование до перехода POST на общую модель. */
-model LegacyBooking {
-  /** Идентификатор бронирования. */
-  id: string;
+/** Данные для создания бронирования. */
+model BookingCreate {
+  /** Идентификатор выбранного типа события. */
+  eventTypeId: string;
 
-  /** Название звонка. */
-  name: string;
+  /** Начало слота в формате ГГГГ-ММ-ДДTЧЧ:ММ+03:00. */
+  startsAt: string;
 
-  /** Начало слота. */
-  startsAt: utcDateTime;
+  /** Имя гостя. */
+  guestName: string;
 
-  /** Конец слота. */
-  endsAt: utcDateTime;
+  /** Email гостя. */
+  guestEmail: string;
 }
 
-/** Данные для создания бронирования по устаревшему контракту. */
-model BookingCreate {
-  /** Название звонка. */
-  name: string;
+/** Счётчик доступных слотов на календарный день. */
+model AvailabilityDay {
+  /** Дата в формате ГГГГ-ММ-ДД. */
+  date: string;
 
-  /** Начало слота. */
-  startsAt: utcDateTime;
+  /** Количество свободных интервалов. */
+  availableSlots: integer;
+}
 
-  /** Конец слота. */
-  endsAt: utcDateTime;
+/** Интервал выбранного дня. */
+model AvailabilityInterval {
+  /** Начало интервала в Europe/Moscow. */
+  startsAt: string;
+
+  /** Окончание интервала в Europe/Moscow. */
+  endsAt: string;
+
+  /** Доступен ли интервал для бронирования. */
+  available: boolean;
+}
+
+/** Доступность выбранного типа события. */
+model Availability {
+  /** Запрошенная дата. */
+  date: string;
+
+  /** Ровно 14 дней окна записи. */
+  days: AvailabilityDay[];
+
+  /** Все интервалы запрошенной даты. */
+  intervals: AvailabilityInterval[];
 }
 
 /** Ошибка конкретного поля запроса. */
 model FieldError {
-  /** Имя поля. */
+  /** Имя поля или заголовка. */
   field: string;
 
   /** Машиночитаемый код ошибки. */
@@ -112,11 +133,29 @@ model ApiError {
   fieldErrors: FieldError[];
 }
 
+@error
+model BadRequestError {
+  @statusCode statusCode: 400;
+  @body error: ApiError;
+}
+
+@error
+model NotFoundError {
+  @statusCode statusCode: 404;
+  @body error: ApiError;
+}
+
+@error
+model ConflictError {
+  @statusCode statusCode: 409;
+  @body error: ApiError;
+}
+
 /** Ошибка валидации параметров запроса. */
 @error
 model ValidationError {
   @statusCode statusCode: 422;
-  @body body: ApiError;
+  @body error: ApiError;
 }
 
 @route("/api")
@@ -143,19 +182,16 @@ namespace Api {
 
     @body
     eventType: EventType;
-  } | {
-    @statusCode
-    statusCode: 400;
+  } | BadRequestError | ValidationError;
 
-    @body
-    error: ApiError;
-  } | {
-    @statusCode
-    statusCode: 422;
-
-    @body
-    error: ApiError;
-  };
+  /** Доступность типа события на выбранную дату и окно записи. */
+  @get
+  @route("/event-types/{eventTypeId}/availability")
+  @tag("event-types")
+  op getAvailability(
+    @path eventTypeId: string,
+    @query date: string,
+  ): Availability | NotFoundError | ValidationError;
 
   /** Предстоящие бронирования в хронологическом порядке. */
   @get
@@ -163,15 +199,18 @@ namespace Api {
   @tag("bookings")
   op listBookings(@query scope: "upcoming"): Booking[] | ValidationError;
 
-  /** Создать бронирование по устаревшему контракту. */
+  /** Создать бронирование. */
   @post
   @route("/bookings")
   @tag("bookings")
-  op createBooking(@body booking: BookingCreate): {
+  op createBooking(
+    @header("Idempotency-Key") idempotencyKey: string,
+    @body booking: BookingCreate,
+  ): {
     @statusCode
     statusCode: 201;
 
     @body
-    booking: LegacyBooking;
-  };
+    booking: Booking;
+  } | BadRequestError | NotFoundError | ConflictError | ValidationError;
 }

@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { ApiCreateBookingData, ApiCreateBookingResponses, ApiCreateEventTypeData, ApiCreateEventTypeErrors, ApiCreateEventTypeResponses, ApiHealthData, ApiHealthResponses, ApiListBookingsData, ApiListBookingsErrors, ApiListBookingsResponses, ApiListEventTypesData, ApiListEventTypesResponses } from './types.gen';
+import type { ApiCreateBookingData, ApiCreateBookingErrors, ApiCreateBookingResponses, ApiCreateEventTypeData, ApiCreateEventTypeErrors, ApiCreateEventTypeResponses, ApiGetAvailabilityData, ApiGetAvailabilityErrors, ApiGetAvailabilityResponses, ApiHealthData, ApiHealthResponses, ApiListBookingsData, ApiListBookingsErrors, ApiListBookingsResponses, ApiListEventTypesData, ApiListEventTypesResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -24,9 +24,9 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 export const apiListBookings = <ThrowOnError extends boolean = false>(options: Options<ApiListBookingsData, ThrowOnError>): RequestResult<ApiListBookingsResponses, ApiListBookingsErrors, ThrowOnError> => (options.client ?? client).get<ApiListBookingsResponses, ApiListBookingsErrors, ThrowOnError>({ url: '/api/bookings', ...options });
 
 /**
- * Создать бронирование по устаревшему контракту.
+ * Создать бронирование.
  */
-export const apiCreateBooking = <ThrowOnError extends boolean = false>(options: Options<ApiCreateBookingData, ThrowOnError>): RequestResult<ApiCreateBookingResponses, unknown, ThrowOnError> => (options.client ?? client).post<ApiCreateBookingResponses, unknown, ThrowOnError>({
+export const apiCreateBooking = <ThrowOnError extends boolean = false>(options: Options<ApiCreateBookingData, ThrowOnError>): RequestResult<ApiCreateBookingResponses, ApiCreateBookingErrors, ThrowOnError> => (options.client ?? client).post<ApiCreateBookingResponses, ApiCreateBookingErrors, ThrowOnError>({
     url: '/api/bookings',
     ...options,
     headers: {
@@ -51,6 +51,11 @@ export const apiCreateEventType = <ThrowOnError extends boolean = false>(options
         ...options.headers
     }
 });
+
+/**
+ * Доступность типа события на выбранную дату и окно записи.
+ */
+export const apiGetAvailability = <ThrowOnError extends boolean = false>(options: Options<ApiGetAvailabilityData, ThrowOnError>): RequestResult<ApiGetAvailabilityResponses, ApiGetAvailabilityErrors, ThrowOnError> => (options.client ?? client).get<ApiGetAvailabilityResponses, ApiGetAvailabilityErrors, ThrowOnError>({ url: '/api/event-types/{eventTypeId}/availability', ...options });
 
 /**
  * Проверка доступности сервиса.
