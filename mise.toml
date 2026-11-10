@@ -126,6 +126,13 @@ dir = "frontend"
 depends = ["install:playwright"]
 run = "pnpm test:e2e"
 
+[tasks."test:external"]
+description = "Playwright: внешние сценарии против CALENDAR_BASE_URL без dev-серверов"
+dir = "frontend"
+depends = ["install:playwright"]
+env = { CALENDAR_BASE_URL = { required = true } }
+run = "pnpm test:e2e:external"
+
 [tasks.check]
 description = "Все проверки проекта (локально и в CI)"
 run = [

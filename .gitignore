@@ -9,3 +9,5 @@ tsp-output/
 playwright-report/
 test-results/
 blob-report/
+.idea/workspace.xml
+.idea/shelf/
