@@ -12,16 +12,23 @@ test("связывает создание типа, запись гостя и �
   await page.goto("/event-types");
 
   const types = page.getByRole("list", { name: "Доступные типы событий" }).getByRole("listitem");
-  await expect(types).not.toHaveCount(0);
+  if (!process.env.CALENDAR_BASE_URL) {
+    await expect(types).toHaveCount(3);
+    await expect(types.nth(0)).toContainText("Знакомство");
+    await expect(types.nth(1)).toContainText("Консультация");
+    await expect(types.nth(2)).toContainText("Глубокий разбор");
+  } else {
+    await expect(types).not.toHaveCount(0);
+  }
   await page.getByRole("link", { name: "Создать тип события", exact: true }).click();
   await page.getByLabel("Название").fill(eventTypeName);
   await page.getByLabel("Описание").fill("Согласуем цели и план работы");
-  await page.getByLabel("Длительность").selectOption("30");
+  await page.getByLabel("Длительность").selectOption("120");
   await page.getByRole("button", { name: "Создать тип события", exact: true }).click();
   await expect(types.filter({ hasText: eventTypeName })).toHaveCount(1);
 
   await page.goto("/book");
-  await page.getByRole("button", { name: `${eventTypeName} · 30 минут`, exact: true }).click();
+  await page.getByRole("button", { name: `${eventTypeName} · 120 минут`, exact: true }).click();
   const days = page.getByRole("list", { name: "Дни записи" }).getByRole("button");
   const intervals = page.getByRole("list", { name: "Интервалы" }).getByRole("button");
   const availableIntervals = page
@@ -34,7 +41,7 @@ test("связывает создание типа, запись гостя и �
     if ((await dayButton.getAttribute("aria-pressed")) !== "true") {
       await dayButton.click();
     }
-    await expect(intervals).toHaveCount(18);
+    await expect(intervals).toHaveCount(15);
     if ((await availableIntervals.count()) > 0) {
       selectedDay = day;
       selectedTime = (await availableIntervals.first().textContent())?.trim() || "";
@@ -51,7 +58,7 @@ test("связывает создание типа, запись гостя и �
   await expect(page.getByRole("heading", { name: "Запись подтверждена" })).toBeVisible();
 
   await page.getByRole("button", { name: "Забронировать ещё" }).click();
-  await page.getByRole("button", { name: `${eventTypeName} · 30 минут`, exact: true }).click();
+  await page.getByRole("button", { name: `${eventTypeName} · 120 минут`, exact: true }).click();
   const bookedDay = days.nth(selectedDay);
   await expect(bookedDay).toBeVisible();
   if ((await bookedDay.getAttribute("aria-pressed")) !== "true") {
@@ -67,5 +74,5 @@ test("связывает создание типа, запись гостя и �
   await expect(booking).toHaveCount(1);
   await expect(booking).toContainText(guestName);
   await expect(booking).toContainText(guestEmail);
-  await expect(booking).toContainText("30 минут");
+  await expect(booking).toContainText("120 минут");
 });

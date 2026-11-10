@@ -8,6 +8,7 @@
 **/*.py[cod]
 **/.pytest_cache/
 **/.ruff_cache/
+**/.rumdl_cache/
 **/.mypy_cache/
 **/dist/
 **/test-results/
