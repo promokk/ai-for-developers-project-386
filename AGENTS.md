@@ -124,7 +124,9 @@
 
 - Секреты в репозитории запрещены: Betterleaks проверяет дерево в pre-commit
   и в `mise run check` (конфиг `.betterleaks.toml`).
-- Workflow GitHub Actions закреплены по SHA и имеют `permissions: {}`.
+- Workflow GitHub Actions закреплены по полному SHA. По умолчанию используется
+  `permissions: {}`; необходимые права выдаются на уровне job. Для
+  release-please разрешены только `contents: write` и `pull-requests: write`.
 - Dev-серверы слушают только `127.0.0.1`.
 
 ## Agent skills
