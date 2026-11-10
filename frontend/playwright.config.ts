@@ -2,6 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: "external.spec.ts",
   fullyParallel: true,
   workers: 1,
   forbidOnly: true,

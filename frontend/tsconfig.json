@@ -13,5 +13,12 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "tests", "vite.config.ts", "openapi-ts.config.ts", "playwright.config.ts"]
+  "include": [
+    "src",
+    "tests",
+    "vite.config.ts",
+    "openapi-ts.config.ts",
+    "playwright.config.ts",
+    "playwright.external.config.ts"
+  ]
 }

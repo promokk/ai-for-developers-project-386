@@ -42,6 +42,8 @@
 - `mise run fix` — безопасные автофиксы линтеров и форматтеров.
 - `mise run test` — тесты бэкенда (pytest).
 - `mise run test:frontend` — браузерные тесты фронтенда (Playwright).
+- `CALENDAR_BASE_URL=<URL> mise run test:external` — внешние HTTP- и
+  браузерные сценарии против уже запущенного приложения, без dev-серверов.
 - `mise run build` — сборка фронтенда (vite build).
 - `mise daemons start|stop|status` — фоновые dev-серверы (backend :8000,
   frontend :5173) через pitchfork. Альтернатива на переднем плане:
@@ -61,6 +63,10 @@
   `fix(frontend): починить статус API на главной`, `chore: обновить ruff`.
 - Сообщение проверяется commitlint в commit-msg хуке hk и в CI — нестандартный
   коммит не пройдёт.
+
+После завершения задачи или подзадачи добавь `Closes #<номер>` в тело коммита,
+оставь в GitHub Issue комментарий с результатом и ссылкой на коммит и закрой её
+через `gh issue close <номер>`.
 
 ## Контракт API
 

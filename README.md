@@ -49,6 +49,12 @@ mise run gen     # TypeSpec -> OpenAPI -> клиентский SDK
 mise run build   # сборка фронтенда
 ```
 
+Сквозные сценарии против уже запущенного приложения, без локальных dev-серверов:
+
+```bash
+CALENDAR_BASE_URL=https://example.com mise run test:external
+```
+
 Коммиты — по Conventional Commits (`feat:`, `fix:`, …), проверяются
 commitlint. Правила для агентов — в [AGENTS.md](AGENTS.md).
 
