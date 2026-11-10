@@ -55,6 +55,18 @@ mise run build   # сборка фронтенда
 CALENDAR_BASE_URL=https://example.com mise run test:external
 ```
 
+## Production-контейнер
+
+```bash
+docker build -t call-calendar .
+docker run --rm -p 8080:8080 -e PORT=8080 call-calendar
+```
+
+Приложение откроется на <http://127.0.0.1:8080>. Без `PORT` контейнер
+использует порт 8000. FastAPI отдаёт API и собранный SPA, включая прямые
+переходы по клиентским URL. Проверить запущенный контейнер можно командой
+`CALENDAR_BASE_URL=http://127.0.0.1:8080 mise run test:external`.
+
 Коммиты — по Conventional Commits (`feat:`, `fix:`, …), проверяются
 commitlint. Правила для агентов — в [AGENTS.md](AGENTS.md).
 

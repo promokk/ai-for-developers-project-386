@@ -27,6 +27,11 @@
 (camelCase в JSON; в Python — snake_case через
 `pydantic.alias_generators.to_camel`).
 
+Корневой `Dockerfile` собирает единый production-образ: FastAPI обслуживает
+API и собранный SPA из `/app/static`, включая fallback для клиентских URL.
+Контейнер запускает один Uvicorn worker на `0.0.0.0` и порте `PORT`
+(по умолчанию 8000) от non-root пользователя.
+
 ## Окружение
 
 Всё окружение разработки управляется через mise (`mise.toml`): версии
