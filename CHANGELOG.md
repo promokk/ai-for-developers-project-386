@@ -2,7 +2,6 @@
 
 ## [0.2.0](https://github.com/promokk/ai-for-developers-project-386/compare/v0.1.0...v0.2.0) (2026-11-10)
 
-
 ### Features
 
 * **backend:** влить гостевое бронирование ([1786c50](https://github.com/promokk/ai-for-developers-project-386/commit/1786c503db5db3e4742446e2f1374dec18c1ec3a))
@@ -19,7 +18,6 @@
 * добавить выбор слота и создание бронирования ([bb884bc](https://github.com/promokk/ai-for-developers-project-386/commit/bb884bc821d42e3b152a0fd9d2f9174d4050bcfc))
 * подготовить production-деплой через Railway ([393ed0a](https://github.com/promokk/ai-for-developers-project-386/commit/393ed0a925ae74b05b4aa6028c9593dd79cd6974))
 * реализовать типы событий и запись гостей ([a08d379](https://github.com/promokk/ai-for-developers-project-386/commit/a08d379a17a9f117a64bb923cbe5c616aee003aa))
-
 
 ### Bug Fixes
 
