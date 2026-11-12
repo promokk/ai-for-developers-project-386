@@ -2,7 +2,6 @@
 
 ## [0.2.2](https://github.com/promokk/ai-for-developers-project-386/compare/v0.2.1...v0.2.2) (2026-11-12)
 
-
 ### Bug Fixes
 
 * **ci:** форматировать changelog в release PR ([245ed38](https://github.com/promokk/ai-for-developers-project-386/commit/245ed384a8f66f001b76d949a47f2eb26b185cc4))
